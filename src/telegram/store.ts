@@ -69,6 +69,12 @@ export class ChatStore {
     return chat.flashAt.filter((at) => utcDay(at) === day).length;
   }
 
+  flashDailyCap = FLASH_DAILY_CAP;
+
+  setFlashDailyCap(cap: number): void {
+    this.flashDailyCap = Number.isFinite(cap) && cap >= 0 ? cap : FLASH_DAILY_CAP;
+  }
+
   canSend(chatId: string, kind: AlertKind, now = new Date()): SendDecision {
     if (kind === "DIGEST") {
       return { ok: true };
@@ -76,7 +82,7 @@ export class ChatStore {
     if (kind === "FLASH" && this.isMuted(chatId, now)) {
       return { ok: false, reason: "muted" };
     }
-    if (kind === "FLASH" && this.flashCountToday(chatId, now) >= FLASH_DAILY_CAP) {
+    if (kind === "FLASH" && this.flashCountToday(chatId, now) >= this.flashDailyCap) {
       return { ok: false, reason: "flash-cap" };
     }
     return { ok: true };

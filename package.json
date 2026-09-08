@@ -13,7 +13,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "bot": "tsx src/processes/bot.ts",
     "worker": "tsx src/processes/worker.ts",
-    "smoke": "tsx src/jobs/smoke.ts"
+    "smoke": "tsx src/jobs/smoke.ts",
+    "dash": "pnpm --dir dashboard dev"
   },
   "dependencies": {
     "bullmq": "^6.3.4",

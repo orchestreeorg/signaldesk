@@ -54,4 +54,21 @@ describe("news poll", () => {
     expect(items).toHaveLength(1);
     expect(items[0]?.title).toMatch(/ETF inflow/);
   });
+
+  it("falls back when fetch times out", async () => {
+    const edgar = sourceById("edgar");
+    if (!edgar) {
+      throw new Error("missing source");
+    }
+    const atom = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><entry><title>SEC item</title><link href="https://www.sec.gov/x"/><updated>2026-09-08T12:00:00Z</updated><summary>filing</summary></entry></feed>`;
+    const timeout = Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" });
+    const body = await fetchFeedXml(
+      edgar,
+      async () => {
+        throw timeout;
+      },
+      async () => atom,
+    );
+    expect(body).toContain("SEC item");
+  });
 });

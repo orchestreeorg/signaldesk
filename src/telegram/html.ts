@@ -1,4 +1,5 @@
 import type { AlertKind } from "../domain/index.js";
+import type { HeadlineTone } from "./tone.js";
 import type { OutgoingAlert } from "./types.js";
 
 export function escapeHtml(value: string): string {
@@ -38,4 +39,19 @@ export function renderAlert(alert: OutgoingAlert): string {
 
 export function renderCommand(kind: AlertKind | "REGIME" | "LAST" | "WHY" | "START" | "WATCH" | "MUTE", body: string): string {
   return `<b>${kind}</b>\n${escapeHtml(body)}`;
+}
+
+/** Title + URL ping. Not an AlertKind. Mute and FLASH cap do not apply. */
+export function renderHeadline(input: {
+  sourceName: string;
+  title: string;
+  url: string;
+  tone: HeadlineTone;
+}): string {
+  const href = escapeHtml(input.url);
+  return [
+    `<b>${escapeHtml(input.sourceName)}</b> · <b>${escapeHtml(input.tone)}</b>`,
+    escapeHtml(input.title),
+    `<a href="${href}">${href}</a>`,
+  ].join("\n");
 }

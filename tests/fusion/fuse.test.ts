@@ -116,6 +116,15 @@ describe("fuse", () => {
     expect(decisions[0]?.pDown).toBeGreaterThan(decisions[0]?.pUp ?? 1);
   });
 
+  it("injected lower credibility threshold can FLASH a CoinDesk-like event", () => {
+    const decisions = fuse({
+      event: event({ polarity: 0.8, novelty: 1, credibility: 0.56 }),
+      snapshot: snapshot({ cvd: 6 }),
+      thresholds: { highCredibility: 0.5 },
+    });
+    expect(decisions[0]?.kind).toBe("FLASH");
+  });
+
   it("priors and adjusted probs sum to 1", () => {
     for (const prior of Object.values(CLASS_PRIORS)) {
       const n = normalize(prior);

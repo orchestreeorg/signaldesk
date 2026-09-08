@@ -1,20 +1,24 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import pg from "pg";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const migrationPath = join(here, "../../drizzle/0000_init.sql");
+const drizzleDir = join(here, "../../drizzle");
 
 export async function migrate(databaseUrl: string): Promise<void> {
-  const sql = await readFile(migrationPath, "utf8");
+  const files = (await readdir(drizzleDir))
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
   const client = new pg.Client({
     connectionString: databaseUrl,
     connectionTimeoutMillis: 5000,
   });
   await client.connect();
   try {
-    await client.query(sql);
+    for (const file of files) {
+      await client.query(await readFile(join(drizzleDir, file), "utf8"));
+    }
   } finally {
     await client.end();
   }

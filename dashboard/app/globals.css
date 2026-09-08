@@ -1,0 +1,79 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0d10;
+  --panel: #14181e;
+  --line: #2a313b;
+  --text: #e8edf2;
+  --muted: #8b96a3;
+  --ok: #3dd68c;
+  --wait: #7cb4ff;
+  --skip: #f0c36a;
+  --warn: #ff9f43;
+  --error: #ff6b6b;
+  --info: #c5d0dc;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
+button { font: inherit; cursor: pointer; }
+code { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+.shell { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 20px; }
+h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.03em; }
+.sub { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px; font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); }
+.dot.on { background: var(--ok); }
+.dot.pause { background: var(--skip); }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.card h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.card .wait { color: var(--wait); font-size: 14px; line-height: 1.4; }
+.card .meta { margin-top: 8px; color: var(--muted); font-size: 12px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.controls button { background: #1c232c; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.controls button.primary { background: #163528; border-color: #1f5c40; color: var(--ok); }
+.controls button.danger { background: #2a1515; border-color: #5c1f1f; color: var(--error); }
+.controls button:disabled { opacity: 0.45; cursor: not-allowed; }
+.note { color: var(--muted); font-size: 12px; margin: 0 0 16px; }
+
+.logbox { background: #0f1318; border: 1px solid var(--line); border-radius: 12px; min-height: 420px; max-height: 62vh; overflow: auto; padding: 10px 0; }
+.row { display: grid; grid-template-columns: 168px 56px 64px 1fr; gap: 10px; padding: 5px 14px; font-size: 12.5px; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.row:hover { background: #182028; }
+.ts { color: #6f7c8a; }
+.scope { color: #9aa8b6; }
+.lvl { font-weight: 600; }
+.lvl-ok { color: var(--ok); }
+.lvl-wait { color: var(--wait); }
+.lvl-skip { color: var(--skip); }
+.lvl-warn { color: var(--warn); }
+.lvl-error { color: var(--error); }
+.lvl-info { color: var(--info); }
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+
+.top-actions { display: flex; gap: 8px; align-items: center; }
+a.badge { text-decoration: none; color: inherit; }
+.stack { display: grid; gap: 10px; margin-bottom: 16px; }
+.stack label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.stack input, .stack select, .stack textarea { background: #0f1318; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+.stack textarea { min-height: 140px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; }
+.check { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.help { margin: 0; color: var(--muted); font-size: 12px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.preview { background: #0f1318; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12px; font-family: "IBM Plex Mono", ui-monospace, monospace; display: grid; gap: 6px; }
+table.params { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.params th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px; }
+table.params td { padding: 4px; }
+table.params input, table.params select { width: 100%; background: #0f1318; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+@media (max-width: 800px) {
+  .split { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 800px) {
+  .grid { grid-template-columns: 1fr; }
+  .row { grid-template-columns: 1fr; gap: 2px; }
+  .top { flex-direction: column; }
+}

@@ -6,7 +6,15 @@ import { defaultKill, tapeKillsThesis, type LiveThesis } from "./thesis.js";
 export const HIGH_NOVELTY = 0.8;
 export const HIGH_CREDIBILITY = 0.7;
 export const LOUD_NARRATIVE = 0.4;
+export const FADE_CREDIBILITY = 0.5;
 export const DEFAULT_HORIZON: Horizon = "24h";
+
+export type FuseThresholds = {
+  highNovelty?: number;
+  highCredibility?: number;
+  fadeCredibility?: number;
+  loudNarrative?: number;
+};
 
 const EXTREME = new Set(["HACK_VENUE", "HACK_PROTOCOL", "EXCHANGE_STRESS"]);
 
@@ -16,7 +24,17 @@ export type FuseInput = {
   live?: LiveThesis | null;
   killHit?: boolean;
   priors?: PriorLookup;
+  thresholds?: FuseThresholds;
 };
+
+function resolveThresholds(input: FuseInput) {
+  return {
+    highNovelty: input.thresholds?.highNovelty ?? HIGH_NOVELTY,
+    highCredibility: input.thresholds?.highCredibility ?? HIGH_CREDIBILITY,
+    fadeCredibility: input.thresholds?.fadeCredibility ?? FADE_CREDIBILITY,
+    loudNarrative: input.thresholds?.loudNarrative ?? LOUD_NARRATIVE,
+  };
+}
 
 function pickAsset(event: Event, snapshot: FeatureSnapshot) {
   if (event.assets.includes(snapshot.asset)) {
@@ -44,14 +62,15 @@ function decision(
     narrative,
     tape,
   );
+  const t = resolveThresholds(input);
   const why: string[] = [
     `${input.event.class} polarity ${narrative}`,
     `tape ${tape >= 0 ? "bid" : "offer"}`,
   ];
-  if (input.event.novelty >= HIGH_NOVELTY) {
+  if (input.event.novelty >= t.highNovelty) {
     why.push("high novelty");
   }
-  if (input.event.credibility >= HIGH_CREDIBILITY) {
+  if (input.event.credibility >= t.highCredibility) {
     why.push("high credibility");
   }
   return {
@@ -69,6 +88,7 @@ export function fuse(input: FuseInput): Decision[] {
   const narrative = Math.sign(input.event.polarity) * Math.min(1, Math.abs(input.event.polarity));
   const tape = tapePolarity(input.snapshot);
   const live = input.live;
+  const t = resolveThresholds(input);
 
   if (live && (input.killHit || tapeKillsThesis(live, tape))) {
     return [decision(input, "INVALIDATE", live.polarity, tape)];
@@ -85,7 +105,7 @@ export function fuse(input: FuseInput): Decision[] {
   }
 
   const strong =
-    input.event.novelty >= HIGH_NOVELTY && input.event.credibility >= HIGH_CREDIBILITY;
+    input.event.novelty >= t.highNovelty && input.event.credibility >= t.highCredibility;
   const extreme = EXTREME.has(input.event.class) && strong;
 
   if (strong && legsAgree(narrative, tape)) {
@@ -95,8 +115,8 @@ export function fuse(input: FuseInput): Decision[] {
     return [decision(input, "FLASH", narrative || -1, tape)];
   }
   if (
-    Math.abs(input.event.polarity) >= LOUD_NARRATIVE &&
-    input.event.credibility >= 0.5 &&
+    Math.abs(input.event.polarity) >= t.loudNarrative &&
+    input.event.credibility >= t.fadeCredibility &&
     legsDisagree(narrative, tape)
   ) {
     return [decision(input, "FADE", narrative, tape)];

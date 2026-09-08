@@ -1,9 +1,11 @@
+import { ops } from "../../ops/log.js";
 import { nextBackoffMs } from "./backoff.js";
 import { fetchOpenInterest } from "./oi.js";
 import { TapeRuntime, type PersistMark } from "./runtime.js";
 import { parseStreamEnvelope, combinedStreamUrl } from "./stream.js";
 
 export type SocketLike = {
+  onopen?: ((event: unknown) => void) | null;
   onmessage: ((event: { data: string }) => void) | null;
   onclose: ((event: unknown) => void) | null;
   onerror: ((event: unknown) => void) | null;
@@ -38,6 +40,10 @@ export function startLiveTape(opts?: {
       return;
     }
     socket = connect(url);
+    ops("tape", "ws.connect", `Opening Binance stream`, { data: { url, attempt } });
+    socket.onopen = () => {
+      ops("tape", "ws.open", "Binance websocket connected", { level: "ok" });
+    };
     socket.onmessage = (event) => {
       attempt = 0;
       try {
@@ -55,6 +61,10 @@ export function startLiveTape(opts?: {
       }
       const wait = nextBackoffMs(attempt);
       attempt += 1;
+      ops("tape", "ws.close", `Websocket closed; reconnect in ${wait}ms (attempt ${attempt})`, {
+        level: "warn",
+        data: { waitMs: wait, attempt },
+      });
       reconnectTimer = setTimeout(open, wait);
     };
     socket.onerror = () => {

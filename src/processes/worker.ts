@@ -5,10 +5,11 @@ import { Worker } from "bullmq";
 import { createLlmFromConfig, MemoryNoveltyIndex } from "../classify/index.js";
 import {
   createNewsCollector,
-  NEWS_BATCH_LIMIT,
   persistRawItems,
   pollNews,
+  sourceById,
 } from "../collectors/news/index.js";
+import { enabledSources, loadDeskSettings, loadNewsSources } from "../desk/index.js";
 import { noopCollector } from "../collectors/noop.js";
 import { listCollectors, registerCollector, runCollectors } from "../collectors/registry.js";
 import { createTapeCollector, startLiveTape } from "../collectors/tape/index.js";
@@ -20,6 +21,7 @@ import { upsertEvent } from "../db/events.js";
 import { quietSnapshot, runNewsDesk } from "../jobs/newsDesk.js";
 import { fillOutcomes } from "../jobs/outcomes.js";
 import { dummyAlert, registerSchedules } from "../jobs/schedule.js";
+import { formatWait, nextDigestAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
 import { Policy } from "../policy/index.js";
 import {
   closeQueues,
@@ -33,6 +35,7 @@ import {
   createApiTransport,
   createLogTransport,
   sendAlert,
+  sendHeadlines,
 } from "../telegram/index.js";
 
 export async function startWorker(): Promise<{
@@ -43,6 +46,7 @@ export async function startWorker(): Promise<{
 }> {
   const config = loadConfig();
   const tapeEnabled = config.TAPE_LIVE && !process.env.VITEST;
+  let paused = false;
   const tapePool = tapeEnabled ? createPool(config.DATABASE_URL) : undefined;
   if (tapePool) {
     await ensureMarksTable(tapePool);
@@ -58,6 +62,8 @@ export async function startWorker(): Promise<{
   registerCollector(createNewsCollector());
   const queueConnection = createQueueConnection(config.REDIS_URL);
   const workerConnection = createQueueConnection(config.REDIS_URL);
+  const opsConnection = createQueueConnection(config.REDIS_URL);
+  const bus = startOpsBus(opsConnection);
   const queues = createQueues(queueConnection);
   const schedulers = await registerSchedules(queues);
   const jobOpts = workerConnectionOpts(workerConnection);
@@ -106,22 +112,76 @@ export async function startWorker(): Promise<{
   const novelty = new MemoryNoveltyIndex();
   const llm = createLlmFromConfig(config);
 
+  const beat = () =>
+    bus.heartbeat({
+      pid: process.pid,
+      paused,
+      newsLive: config.NEWS_LIVE,
+      tapeLive: tapeEnabled,
+      dryRun: config.TELEGRAM_DRY_RUN,
+    });
+
   const processors = [
     new Worker("tape", async () => {
-      if (liveTape) {
-        await liveTape.runtime.pollOi();
+      if (paused) {
+        ops("tape", "paused", "Tape job skipped: worker is paused", { level: "wait" });
         return;
       }
+      if (liveTape) {
+        await liveTape.runtime.pollOi();
+        ops("tape", "wait", `Tape idle. Next OI ${formatWait(nextTapeAt())}`, { level: "wait" });
+        return;
+      }
+      ops("tape", "stub", "TAPE_LIVE=0; running stub tape collector", { level: "wait" });
       await runNamed("tape");
     }, jobOpts),
     new Worker("news", async () => {
+      if (paused) {
+        ops("news", "paused", "News job skipped: worker is paused", { level: "wait" });
+        return;
+      }
       if (!config.NEWS_LIVE) {
+        ops("news", "stub", "NEWS_LIVE=0; not polling RSS/Farside", { level: "wait" });
         await runNamed("news");
         return;
       }
       const pool = createPool(config.DATABASE_URL);
       try {
-        const items = await persistRawItems(pool, await pollNews(), { limit: NEWS_BATCH_LIMIT });
+        const settings = await loadDeskSettings(pool);
+        const catalog = await loadNewsSources(pool);
+        policy.applySettings(settings);
+        const fetched = await pollNews({ sources: enabledSources(catalog) });
+        const items = await persistRawItems(pool, fetched, { limit: settings.newsBatchLimit });
+        ops("news", "persist", `Persisting ${items.length} new item(s) (cap ${settings.newsBatchLimit}; ${fetched.length} fetched)`, {
+          data: { persisted: items.length, fetched: fetched.length, cap: settings.newsBatchLimit },
+        });
+        if (fetched.length > items.length) {
+          ops("news", "persist.cap", `${fetched.length - items.length} older new item(s) left for the next poll`, {
+            level: "wait",
+            data: { leftover: fetched.length - items.length },
+          });
+        }
+        if (items.length > 0 && config.TELEGRAM_CHAT_ID && settings.headlineEnabled) {
+          const byId = new Map(catalog.map((source) => [source.id, source]));
+          const headlines = await sendHeadlines(transport, {
+            chatId: config.TELEGRAM_CHAT_ID,
+            items,
+            dryRun: config.TELEGRAM_DRY_RUN,
+            settings,
+            sourceNameOf: (id) => byId.get(id)?.name ?? sourceById(id)?.name ?? id,
+          });
+          const sent = headlines.filter((row) => row.sent || row.reason === "dry-run");
+          ops("news", "headline", `Headline ping ${sent.length} new title(s)`, {
+            data: {
+              count: sent.length,
+              filtered: headlines.length - sent.length,
+              dryRun: config.TELEGRAM_DRY_RUN,
+              toneMode: settings.toneMode,
+              headlineSend: settings.headlineSend,
+              titles: items.map((item) => item.title),
+            },
+          });
+        }
         await runNewsDesk(items, {
           llm,
           policy,
@@ -133,52 +193,97 @@ export async function startWorker(): Promise<{
       } finally {
         await pool.end();
       }
+      ops("news", "wait", `News idle. Next poll ${formatWait(nextNewsAt())}`, { level: "wait" });
     }, jobOpts),
     new Worker("outcomes", async () => {
+      if (paused) {
+        return;
+      }
       const pool = createPool(config.DATABASE_URL);
       try {
+        ops("outcomes", "run", "Filling due outcomes");
         await fillOutcomes(createDb(pool), (sql, params) => pool.query(sql, params));
       } finally {
         await pool.end();
       }
     }, jobOpts),
     new Worker("digest", async () => {
-      const chatId = config.TELEGRAM_CHAT_ID;
-      if (!chatId) {
-        console.log("digest: no TELEGRAM_CHAT_ID, skip");
+      if (paused) {
+        ops("digest", "paused", "DIGEST skipped: worker is paused", { level: "wait" });
         return;
       }
-      await sendAlert(store, transport, {
+      const chatId = config.TELEGRAM_CHAT_ID;
+      if (!chatId) {
+        ops("digest", "skip", "No TELEGRAM_CHAT_ID; DIGEST not sent", { level: "skip" });
+        return;
+      }
+      const send = await sendAlert(store, transport, {
         chatId,
         alert: dummyAlert("DIGEST"),
         dryRun: config.TELEGRAM_DRY_RUN,
       });
+      ops("digest", "emit", send.sent ? "DIGEST sent" : `DIGEST ${send.reason}`, {
+        level: send.sent || send.reason === "dry-run" ? "ok" : "skip",
+      });
+      ops("digest", "wait", `Next DIGEST ${formatWait(nextDigestAt())}`, { level: "wait" });
     }, jobOpts),
   ];
   for (const worker of processors) {
     worker.on("error", (error: Error) => {
-      console.error(`worker: ${error.message}`);
+      ops("worker", "error", error.message, { level: "error" });
     });
   }
 
+  bus.subscribeControl((command) => {
+    ops("worker", "control", `Received ${command.action}`, { data: { action: command.action } });
+    if (command.action === "pause") {
+      paused = true;
+    }
+    if (command.action === "resume") {
+      paused = false;
+    }
+    if (command.action === "run-news") {
+      void queues.news.add("news-now", { kind: "news" });
+    }
+    if (command.action === "run-tape") {
+      void queues.tape.add("tape-now", { kind: "tape" });
+    }
+    if (command.action === "stop") {
+      void runtimeStop().finally(() => process.exit(0));
+    }
+    void beat();
+  });
+
   const collectors = listCollectors().map((collector) => collector.name);
-  console.log(`worker: collectors=${collectors.join(",")}`);
-  console.log(`worker: queues=${QUEUE_NAMES.join(",")}`);
-  console.log(`worker: digest=${schedulers.join(",")} at 00:00/08:00/16:00 UTC`);
-  console.log(`worker: news_live=${config.NEWS_LIVE ? "1" : "0"}`);
-  console.log(`worker: tape_live=${tapeEnabled ? "1" : "0"}`);
+  ops("worker", "boot", `collectors=${collectors.join(",")}`, { data: { collectors } });
+  ops("worker", "boot", `queues=${QUEUE_NAMES.join(",")}`);
+  ops("worker", "boot", `schedulers=${schedulers.join(",")} (DIGEST 00:00/08:00/16:00 UTC)`);
+  ops("worker", "boot", `news_live=${config.NEWS_LIVE ? "1" : "0"} tape_live=${tapeEnabled ? "1" : "0"} telegram_dry_run=${config.TELEGRAM_DRY_RUN ? "1" : "0"}`);
+  ops("news", "wait", `Waiting for first news cron. ${formatWait(nextNewsAt())}`, { level: "wait" });
+  ops("tape", "wait", `Waiting for first tape cron. ${formatWait(nextTapeAt())}`, { level: "wait" });
+  ops("digest", "wait", `Waiting for DIGEST. ${formatWait(nextDigestAt())}`, { level: "wait" });
+  await beat();
+  const heartbeatTimer = setInterval(() => {
+    void beat();
+  }, 5_000);
+
+  async function runtimeStop() {
+    clearInterval(heartbeatTimer);
+    ops("worker", "stop", "Worker shutting down");
+    liveTape?.stop();
+    await tapePool?.end();
+    await Promise.all(processors.map((worker) => worker.close()));
+    bus.close();
+    await closeQueues(queues, queueConnection);
+    workerConnection.disconnect();
+    opsConnection.disconnect();
+  }
 
   return {
     collectors,
     queues: QUEUE_NAMES,
     schedulers,
-    async stop() {
-      liveTape?.stop();
-      await tapePool?.end();
-      await Promise.all(processors.map((worker) => worker.close()));
-      await closeQueues(queues, queueConnection);
-      workerConnection.disconnect();
-    },
+    stop: runtimeStop,
   };
 }
 

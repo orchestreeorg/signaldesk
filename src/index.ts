@@ -27,3 +27,4 @@ export { runNewsDesk } from "./jobs/newsDesk.js";
 export { DIGEST_CRON, NEWS_CRON, TAPE_CRON, registerSchedules } from "./jobs/schedule.js";
 export { runSmoke } from "./jobs/smoke.js";
 export { runOnce } from "./jobs/runOnce.js";
+export { formatWait, nextDigestAt, nextNewsAt, nextTapeAt, ops } from "./ops/index.js";

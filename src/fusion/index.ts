@@ -1,4 +1,12 @@
-export { fuse, DEFAULT_HORIZON, HIGH_CREDIBILITY, HIGH_NOVELTY } from "./fuse.js";
+export {
+  fuse,
+  DEFAULT_HORIZON,
+  FADE_CREDIBILITY,
+  HIGH_CREDIBILITY,
+  HIGH_NOVELTY,
+  LOUD_NARRATIVE,
+  type FuseThresholds,
+} from "./fuse.js";
 export {
   adjustProbs,
   CLASS_PRIORS,

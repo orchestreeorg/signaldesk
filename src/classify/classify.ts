@@ -2,6 +2,7 @@ import type { RawItem } from "../collectors/news/types.js";
 import type { NewEvent } from "../db/events.js";
 import { fingerprint, type Asset } from "../domain/index.js";
 import { credibilityOf } from "./credibility.js";
+import { ops } from "../ops/log.js";
 import { heuristicExtract } from "./heuristic.js";
 import type { LlmClient } from "./llm.js";
 import type { Classification } from "./types.js";
@@ -48,7 +49,12 @@ export async function classifyRawItem(
   let extracted;
   try {
     extracted = sanitizeExtract(await llm.extract(item));
-  } catch {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    ops("news", "item.heuristic", `LLM failed on ${item.url}; using heuristic (${message})`, {
+      level: "warn",
+      data: { url: item.url, reason: message },
+    });
     extracted = sanitizeExtract(heuristicExtract(item));
   }
   const assets = extracted.assets.length > 0 ? extracted.assets : inferAssets(`${item.title} ${item.body}`);

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { ops } from "../../ops/log.js";
 import { collapseRawItems } from "./collapse.js";
 import { ingestFeed } from "./ingest.js";
 import { NEWS_SOURCES, type NewsSource } from "./sources.js";
@@ -49,22 +50,44 @@ export async function curlGet(url: string): Promise<string> {
   });
 }
 
+function isAbort(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return error.name === "TimeoutError" || error.name === "AbortError" || /aborted|timeout/i.test(error.message);
+}
+
 export async function fetchFeedXml(
   source: NewsSource,
   fetchImpl: typeof fetch = fetch,
   fallbackGet: (url: string) => Promise<string> = curlGet,
 ): Promise<string> {
-  const response = await fetchImpl(source.url, {
-    headers: NEWS_HEADERS,
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (response.ok) {
-    return response.text();
+  try {
+    const response = await fetchImpl(source.url, {
+      headers: NEWS_HEADERS,
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (response.ok) {
+      return response.text();
+    }
+    if (response.status === 403 || response.status === 503) {
+      ops("news", "source.fallback", `Node fetch ${source.id} HTTP ${response.status}; retrying with curl`, {
+        level: "warn",
+        data: { sourceId: source.id, status: response.status },
+      });
+      return fallbackGet(source.url);
+    }
+    throw new Error(`${source.id} HTTP ${response.status}`);
+  } catch (error: unknown) {
+    if (isAbort(error)) {
+      ops("news", "source.fallback", `Node fetch ${source.id} timed out; retrying with curl`, {
+        level: "warn",
+        data: { sourceId: source.id },
+      });
+      return fallbackGet(source.url);
+    }
+    throw error;
   }
-  if (response.status === 403 || response.status === 503) {
-    return fallbackGet(source.url);
-  }
-  throw new Error(`${source.id} HTTP ${response.status}`);
 }
 
 export async function pollNews(opts?: {
@@ -74,13 +97,31 @@ export async function pollNews(opts?: {
   const sources = opts?.sources ?? NEWS_SOURCES;
   const fetchXml = opts?.fetchXml ?? fetchFeedXml;
   const items: RawItem[] = [];
+  ops("news", "round.start", `News poll starting (${sources.map((source) => source.id).join(", ")})`, {
+    data: { sources: sources.map((source) => source.id) },
+  });
   for (const source of sources) {
+    ops("news", "source.fetch", `Fetching ${source.name}`, {
+      data: { sourceId: source.id, url: source.url, kind: source.kind },
+    });
     try {
-      items.push(...ingestFeed(source, await fetchXml(source)));
+      const ingested = ingestFeed(source, await fetchXml(source));
+      items.push(...ingested);
+      ops("news", "source.ok", `${source.id}: kept ${ingested.length} item(s)`, {
+        level: "ok",
+        data: { sourceId: source.id, items: ingested.length },
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`news: skip ${source.id}: ${message}`);
+      ops("news", "source.skip", `Ignoring ${source.id}: ${message}`, {
+        level: "skip",
+        data: { sourceId: source.id, reason: message },
+      });
     }
   }
-  return collapseRawItems(items);
+  const collapsed = collapseRawItems(items);
+  ops("news", "round.fetched", `Fetched ${items.length} raw, ${collapsed.length} after collapse`, {
+    data: { raw: items.length, collapsed: collapsed.length },
+  });
+  return collapsed;
 }

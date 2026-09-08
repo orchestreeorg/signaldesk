@@ -8,6 +8,7 @@ import {
 } from "../classify/index.js";
 import { eventFingerprint, type NewEvent } from "../db/events.js";
 import type { Asset, Event, FeatureSnapshot } from "../domain/index.js";
+import { ops } from "../ops/log.js";
 import type { Policy } from "../policy/index.js";
 import type { EmitResult } from "../policy/index.js";
 
@@ -49,8 +50,14 @@ export async function runNewsDesk(
   const events: Event[] = [];
   const emits: EmitResult[] = [];
 
+  ops("news", "desk.start", `Classifying ${items.length} new item(s)`, {
+    data: { items: items.length },
+  });
   for (const item of items) {
     try {
+      ops("news", "item.classify", `Classify ${item.sourceId}: ${item.title.slice(0, 120)}`, {
+        data: { sourceId: item.sourceId, url: item.url },
+      });
       const classified = await classifyRawItem(item, deps.llm, novelty, item.publishedAt);
       novelty.remember?.(classified.fingerprint, item.publishedAt);
       const draft = toNewEvent(item, classified);
@@ -58,7 +65,20 @@ export async function runNewsDesk(
         ? await deps.persistEvent(draft)
         : eventFromClassified(item, classified);
       events.push(event);
+      ops("news", "item.classified", `${classified.class} novelty=${classified.novelty} cred=${classified.credibility}`, {
+        level: "ok",
+        data: {
+          class: classified.class,
+          novelty: classified.novelty,
+          credibility: classified.credibility,
+          polarity: classified.polarity,
+        },
+      });
       if (classified.novelty === 0) {
+        ops("news", "item.skip", `Ignoring ${item.url}: already seen in 24h (novelty 0)`, {
+          level: "skip",
+          data: { url: item.url },
+        });
         continue;
       }
       const asset = event.assets[0] ?? "BTC";
@@ -66,7 +86,10 @@ export async function runNewsDesk(
       emits.push(...(await deps.policy.handle(event, snapshot, now)));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`news: skip item ${item.url}: ${message}`);
+      ops("news", "item.skip", `Ignoring item ${item.url}: ${message}`, {
+        level: "skip",
+        data: { url: item.url, reason: message },
+      });
     }
   }
   return { events, emits };

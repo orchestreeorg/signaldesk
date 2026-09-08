@@ -1,4 +1,5 @@
-export type NewsSourceKind = "rss" | "atom" | "html";
+export const NEWS_SOURCE_KINDS = ["rss", "atom", "html"] as const;
+export type NewsSourceKind = (typeof NEWS_SOURCE_KINDS)[number];
 
 export type NewsSource = {
   id: string;

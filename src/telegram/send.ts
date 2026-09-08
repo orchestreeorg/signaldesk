@@ -1,7 +1,10 @@
 import { Bot } from "grammy";
 import type { AlertKind } from "../domain/index.js";
-import { renderAlert } from "./html.js";
+import { renderAlert, renderHeadline } from "./html.js";
 import { ChatStore } from "./store.js";
+import { DEFAULT_DESK_SETTINGS } from "../desk/defaults.js";
+import type { DeskSettings } from "../desk/types.js";
+import { headlineTone, shouldSendHeadline, type HeadlineTone } from "./tone.js";
 import type { OutgoingAlert } from "./types.js";
 
 export type TelegramTransport = {
@@ -11,6 +14,10 @@ export type TelegramTransport = {
 export type SendResult =
   | { sent: true; html: string }
   | { sent: false; html: string; reason: "muted" | "flash-cap" | "dry-run" };
+
+export type HeadlineSendResult =
+  | { sent: true; html: string }
+  | { sent: false; html: string; reason: "dry-run" | "filtered" };
 
 export function createLogTransport(): TelegramTransport {
   return {
@@ -61,4 +68,69 @@ export async function sendAlert(
 
 export function isSendableKind(kind: AlertKind): boolean {
   return ["FLASH", "FADE", "CONFIRM", "INVALIDATE", "DIGEST"].includes(kind);
+}
+
+/**
+ * First-seen headline ping. Not an AlertKind.
+ * Mute does not block headlines (mute still blocks FLASH via sendAlert).
+ * The 4 FLASH/day cap does not apply.
+ */
+export async function sendHeadline(
+  transport: TelegramTransport,
+  input: {
+    chatId: string;
+    sourceName: string;
+    title: string;
+    url: string;
+    dryRun: boolean;
+    sourceId?: string;
+    tone?: HeadlineTone;
+    settings?: DeskSettings;
+  },
+): Promise<HeadlineSendResult> {
+  const settings = input.settings ?? DEFAULT_DESK_SETTINGS;
+  const tone = input.tone ?? headlineTone(input.title, settings);
+  const html = renderHeadline({
+    sourceName: input.sourceName,
+    title: input.title,
+    url: input.url,
+    tone,
+  });
+  if (!shouldSendHeadline(tone, settings)) {
+    return { sent: false, html, reason: "filtered" };
+  }
+  await transport.send(input.chatId, html);
+  if (input.dryRun) {
+    return { sent: false, html, reason: "dry-run" };
+  }
+  return { sent: true, html };
+}
+
+export async function sendHeadlines(
+  transport: TelegramTransport,
+  input: {
+    chatId: string;
+    items: Array<{ sourceId: string; title: string; url: string }>;
+    dryRun: boolean;
+    sourceNameOf?: (sourceId: string) => string;
+    settings?: DeskSettings;
+  },
+): Promise<HeadlineSendResult[]> {
+  const nameOf = input.sourceNameOf ?? ((sourceId: string) => sourceId);
+  const settings = input.settings ?? DEFAULT_DESK_SETTINGS;
+  const results: HeadlineSendResult[] = [];
+  for (const item of input.items) {
+    results.push(
+      await sendHeadline(transport, {
+        chatId: input.chatId,
+        sourceName: nameOf(item.sourceId),
+        sourceId: item.sourceId,
+        title: item.title,
+        url: item.url,
+        dryRun: input.dryRun,
+        settings,
+      }),
+    );
+  }
+  return results;
 }

@@ -1,3 +1,4 @@
+import { ops } from "../../ops/log.js";
 import type { Asset, FeatureSnapshot } from "../../domain/index.js";
 import { buildFeatureSnapshots } from "../../features/snapshot.js";
 import { quietSnapshot } from "../../jobs/newsDesk.js";
@@ -25,10 +26,18 @@ export class TapeRuntime {
 
   async pollOi(): Promise<void> {
     try {
-      this.buffer.pushAll(await this.fetchOi());
+      const ticks = await this.fetchOi();
+      this.buffer.pushAll(ticks);
+      ops("tape", "oi.ok", `Open interest tick: ${ticks.length} mark(s), buffer=${this.buffer.ticks.length}`, {
+        level: "ok",
+        data: { ticks: ticks.length, buffer: this.buffer.ticks.length },
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`tape: oi ${message}`);
+      ops("tape", "oi.skip", `Ignoring OI poll: ${message}`, {
+        level: "skip",
+        data: { reason: message },
+      });
     }
   }
 
