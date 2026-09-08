@@ -1,0 +1,12 @@
+[
+  {
+    "ts": "2026-09-01T02:55:00.000Z",
+    "asset": "BTC",
+    "exchangeNetflowZ": null,
+    "stablecoinDeltaZ": null,
+    "funding": 0.0002,
+    "oiChangePct": 10,
+    "cvd": 13.5,
+    "volRegime": "high"
+  }
+]

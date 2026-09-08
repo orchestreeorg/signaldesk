@@ -1,0 +1,41 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`telegram templates > renders CONFIRM HTML 1`] = `
+"<b>CONFIRM BTC · 24h · short-bias</b>
+P(↓&gt;2%) 0.71 · P(↑&gt;2%) 0.09 · P(in) 0.20
+<b>Why:</b> venue pause + CEX inflow z +2.4
+<b>Kill:</b> withdrawals resume AND inflow z &lt; 0.5
+src: <a href="https://www.coindesk.com/markets/venue-pause">link</a> · id: <code>ev_1842</code>"
+`;
+
+exports[`telegram templates > renders DIGEST HTML 1`] = `
+"<b>DIGEST BTC · 24h · short-bias</b>
+P(↓&gt;2%) 0.71 · P(↑&gt;2%) 0.09 · P(in) 0.20
+<b>Why:</b> venue pause + CEX inflow z +2.4
+<b>Kill:</b> withdrawals resume AND inflow z &lt; 0.5
+src: <a href="https://www.coindesk.com/markets/venue-pause">link</a> · id: <code>ev_1842</code>"
+`;
+
+exports[`telegram templates > renders FADE HTML 1`] = `
+"<b>FADE BTC · 24h · short-bias</b>
+P(↓&gt;2%) 0.71 · P(↑&gt;2%) 0.09 · P(in) 0.20
+<b>Why:</b> venue pause + CEX inflow z +2.4
+<b>Kill:</b> withdrawals resume AND inflow z &lt; 0.5
+src: <a href="https://www.coindesk.com/markets/venue-pause">link</a> · id: <code>ev_1842</code>"
+`;
+
+exports[`telegram templates > renders FLASH HTML 1`] = `
+"<b>FLASH BTC · 24h · short-bias</b>
+P(↓&gt;2%) 0.71 · P(↑&gt;2%) 0.09 · P(in) 0.20
+<b>Why:</b> venue pause + CEX inflow z +2.4
+<b>Kill:</b> withdrawals resume AND inflow z &lt; 0.5
+src: <a href="https://www.coindesk.com/markets/venue-pause">link</a> · id: <code>ev_1842</code>"
+`;
+
+exports[`telegram templates > renders INVALIDATE HTML 1`] = `
+"<b>INVALIDATE BTC · 24h · short-bias</b>
+P(↓&gt;2%) 0.71 · P(↑&gt;2%) 0.09 · P(in) 0.20
+<b>Why:</b> venue pause + CEX inflow z +2.4
+<b>Kill:</b> withdrawals resume AND inflow z &lt; 0.5
+src: <a href="https://www.coindesk.com/markets/venue-pause">link</a> · id: <code>ev_1842</code>"
+`;
