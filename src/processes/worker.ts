@@ -3,7 +3,12 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Worker } from "bullmq";
 import { createLlmFromConfig, MemoryNoveltyIndex } from "../classify/index.js";
-import { createNewsCollector, persistRawItems, pollNews } from "../collectors/news/index.js";
+import {
+  createNewsCollector,
+  NEWS_BATCH_LIMIT,
+  persistRawItems,
+  pollNews,
+} from "../collectors/news/index.js";
 import { noopCollector } from "../collectors/noop.js";
 import { listCollectors, registerCollector, runCollectors } from "../collectors/registry.js";
 import { createTapeCollector, startLiveTape } from "../collectors/tape/index.js";
@@ -16,7 +21,13 @@ import { quietSnapshot, runNewsDesk } from "../jobs/newsDesk.js";
 import { fillOutcomes } from "../jobs/outcomes.js";
 import { dummyAlert, registerSchedules } from "../jobs/schedule.js";
 import { Policy } from "../policy/index.js";
-import { closeQueues, createQueueConnection, createQueues, QUEUE_NAMES } from "../queue.js";
+import {
+  closeQueues,
+  createQueueConnection,
+  createQueues,
+  QUEUE_NAMES,
+  workerConnectionOpts,
+} from "../queue.js";
 import {
   ChatStore,
   createApiTransport,
@@ -45,9 +56,11 @@ export async function startWorker(): Promise<{
   registerCollector(noopCollector);
   registerCollector(createTapeCollector({ live: tapeEnabled, runtime: liveTape?.runtime }));
   registerCollector(createNewsCollector());
-  const connection = createQueueConnection(config.REDIS_URL);
-  const queues = createQueues(connection);
+  const queueConnection = createQueueConnection(config.REDIS_URL);
+  const workerConnection = createQueueConnection(config.REDIS_URL);
+  const queues = createQueues(queueConnection);
   const schedulers = await registerSchedules(queues);
+  const jobOpts = workerConnectionOpts(workerConnection);
   await runCollectors({ now: new Date() });
 
   const store = new ChatStore();
@@ -100,7 +113,7 @@ export async function startWorker(): Promise<{
         return;
       }
       await runNamed("tape");
-    }, { connection }),
+    }, jobOpts),
     new Worker("news", async () => {
       if (!config.NEWS_LIVE) {
         await runNamed("news");
@@ -108,7 +121,7 @@ export async function startWorker(): Promise<{
       }
       const pool = createPool(config.DATABASE_URL);
       try {
-        const items = await persistRawItems(pool, await pollNews());
+        const items = await persistRawItems(pool, await pollNews(), { limit: NEWS_BATCH_LIMIT });
         await runNewsDesk(items, {
           llm,
           policy,
@@ -120,7 +133,7 @@ export async function startWorker(): Promise<{
       } finally {
         await pool.end();
       }
-    }, { connection }),
+    }, jobOpts),
     new Worker("outcomes", async () => {
       const pool = createPool(config.DATABASE_URL);
       try {
@@ -128,7 +141,7 @@ export async function startWorker(): Promise<{
       } finally {
         await pool.end();
       }
-    }, { connection }),
+    }, jobOpts),
     new Worker("digest", async () => {
       const chatId = config.TELEGRAM_CHAT_ID;
       if (!chatId) {
@@ -140,8 +153,13 @@ export async function startWorker(): Promise<{
         alert: dummyAlert("DIGEST"),
         dryRun: config.TELEGRAM_DRY_RUN,
       });
-    }, { connection }),
+    }, jobOpts),
   ];
+  for (const worker of processors) {
+    worker.on("error", (error: Error) => {
+      console.error(`worker: ${error.message}`);
+    });
+  }
 
   const collectors = listCollectors().map((collector) => collector.name);
   console.log(`worker: collectors=${collectors.join(",")}`);
@@ -158,7 +176,8 @@ export async function startWorker(): Promise<{
       liveTape?.stop();
       await tapePool?.end();
       await Promise.all(processors.map((worker) => worker.close()));
-      await closeQueues(queues, connection);
+      await closeQueues(queues, queueConnection);
+      workerConnection.disconnect();
     },
   };
 }

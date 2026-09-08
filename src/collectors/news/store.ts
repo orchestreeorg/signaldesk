@@ -2,6 +2,29 @@ import type pg from "pg";
 import { collapseRawItems, isSameStory } from "./collapse.js";
 import type { RawItem } from "./types.js";
 
+export const NEWS_BATCH_LIMIT = 12;
+
+export function pickNewRawItems(
+  incoming: RawItem[],
+  stored: RawItem[],
+  limit = NEWS_BATCH_LIMIT,
+): RawItem[] {
+  const accepted: RawItem[] = [];
+  const ranked = collapseRawItems(incoming).sort(
+    (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime(),
+  );
+  for (const item of ranked) {
+    if (stored.some((row) => isSameStory(row, item))) {
+      continue;
+    }
+    accepted.push(item);
+    if (accepted.length >= limit) {
+      break;
+    }
+  }
+  return accepted;
+}
+
 const DDL = `
 CREATE TABLE IF NOT EXISTS raw_items (
   url text PRIMARY KEY,
@@ -18,7 +41,11 @@ export async function ensureRawItemTable(pool: pg.Pool): Promise<void> {
   await pool.query(DDL);
 }
 
-export async function persistRawItems(pool: pg.Pool, items: RawItem[]): Promise<RawItem[]> {
+export async function persistRawItems(
+  pool: pg.Pool,
+  items: RawItem[],
+  opts?: { limit?: number },
+): Promise<RawItem[]> {
   await ensureRawItemTable(pool);
   const existing = await pool.query<{
     url: string;
@@ -38,19 +65,14 @@ export async function persistRawItems(pool: pg.Pool, items: RawItem[]): Promise<
     simhash: row.simhash,
     publishedAt: row.published_at,
   }));
-  const accepted: RawItem[] = [];
-  for (const item of collapseRawItems(items)) {
-    if (stored.some((row) => isSameStory(row, item))) {
-      continue;
-    }
+  const accepted = pickNewRawItems(items, stored, opts?.limit ?? NEWS_BATCH_LIMIT);
+  for (const item of accepted) {
     await pool.query(
       `INSERT INTO raw_items (url, source_id, source_rank, title, body, simhash, published_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (url) DO NOTHING`,
       [item.url, item.sourceId, item.sourceRank, item.title, item.body, item.simhash, item.publishedAt],
     );
-    stored.push(item);
-    accepted.push(item);
   }
   return accepted;
 }

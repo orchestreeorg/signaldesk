@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createNewsCollector } from "../../../src/collectors/news/collector.js";
-import { pollNews } from "../../../src/collectors/news/poll.js";
+import { fetchFeedXml, pollNews } from "../../../src/collectors/news/poll.js";
 import { sourceById } from "../../../src/collectors/news/sources.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -34,5 +34,24 @@ describe("news poll", () => {
     });
     await collector.run({ now: new Date() });
     expect(hits).toBe(0);
+  });
+
+  it("falls back when fetch returns 403", async () => {
+    const farside = sourceById("farside");
+    if (!farside) {
+      throw new Error("missing source");
+    }
+    const html = xml("farside-btc.html");
+    const items = await pollNews({
+      sources: [farside],
+      fetchXml: async (source) =>
+        fetchFeedXml(
+          source,
+          async () => new Response("blocked", { status: 403 }),
+          async () => html,
+        ),
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]?.title).toMatch(/ETF inflow/);
   });
 });

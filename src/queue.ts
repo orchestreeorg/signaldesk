@@ -14,11 +14,22 @@ export type QueueName = (typeof QUEUE_NAMES)[number];
 
 export type QueueMap = { [K in QueueName]: Queue };
 
+export const WORKER_LOCK_DURATION_MS = 5 * 60 * 1000;
+export const WORKER_STALLED_INTERVAL_MS = 60 * 1000;
+
 export function createQueueConnection(redisUrl: string): Redis {
   return new Redis(redisUrl, {
     maxRetriesPerRequest: null,
     connectTimeout: 5000,
   });
+}
+
+export function workerConnectionOpts(connection: Redis) {
+  return {
+    connection,
+    lockDuration: WORKER_LOCK_DURATION_MS,
+    stalledInterval: WORKER_STALLED_INTERVAL_MS,
+  };
 }
 
 export function createQueues(connection: Redis): QueueMap {

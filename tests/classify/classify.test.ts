@@ -168,4 +168,19 @@ describe("classify", () => {
     expect(second.novelty).toBe(0);
     expect(second.fingerprint).toBe(first.fingerprint);
   });
+
+  it("falls back to the heuristic when the LLM throws", async () => {
+    const classified = await classifyRawItem(
+      item({
+        url: "https://example.com/venue-down",
+        title: "Major venue pauses BTC withdrawals after outage",
+        body: "A large crypto exchange halted bitcoin withdrawals.",
+        sourceId: "coindesk",
+        sourceRank: 70,
+      }),
+      { async extract() { throw new Error("LLM 500"); } },
+      new MemoryNoveltyIndex(),
+    );
+    expect(classified.class).toBe("EXCHANGE_STRESS");
+  });
 });

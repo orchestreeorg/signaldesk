@@ -35,6 +35,7 @@ export function createOpenAiCompatibleClient(opts: {
           "content-type": "application/json",
           authorization: `Bearer ${opts.apiKey}`,
         },
+        signal: AbortSignal.timeout(20_000),
         body: JSON.stringify({
           model: opts.model,
           temperature: 0,

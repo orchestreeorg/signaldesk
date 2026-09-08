@@ -2,6 +2,7 @@ import type { RawItem } from "../collectors/news/types.js";
 import type { NewEvent } from "../db/events.js";
 import { fingerprint, type Asset } from "../domain/index.js";
 import { credibilityOf } from "./credibility.js";
+import { heuristicExtract } from "./heuristic.js";
 import type { LlmClient } from "./llm.js";
 import type { Classification } from "./types.js";
 import { sanitizeExtract } from "./validate.js";
@@ -44,7 +45,12 @@ export async function classifyRawItem(
   novelty: NoveltyIndex,
   now = item.publishedAt,
 ): Promise<Classification> {
-  const extracted = sanitizeExtract(await llm.extract(item));
+  let extracted;
+  try {
+    extracted = sanitizeExtract(await llm.extract(item));
+  } catch {
+    extracted = sanitizeExtract(heuristicExtract(item));
+  }
   const assets = extracted.assets.length > 0 ? extracted.assets : inferAssets(`${item.title} ${item.body}`);
   const scored = credibilityOf({
     sourceId: item.sourceId,

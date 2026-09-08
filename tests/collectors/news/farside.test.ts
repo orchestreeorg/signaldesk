@@ -22,6 +22,7 @@ describe("farside html", () => {
     expect(items).toHaveLength(1);
     expect(items[0]?.title).toContain("inflow $174.6m");
     expect(items[0]?.url).toContain("as_of=2026-09-04");
+    expect(items[0]?.title).not.toContain("08 Sep");
   });
 
   it("ingests through the news poll path", () => {

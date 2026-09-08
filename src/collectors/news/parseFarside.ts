@@ -44,6 +44,9 @@ export function parseFarsideHtml(html: string, pageUrl: string): ParsedFeedItem[
     if (!label || !block) {
       continue;
     }
+    if (/>(?:-|&mdash;)<\/span>/.test(block)) {
+      continue;
+    }
     const nums = [...block.matchAll(/>(\(?[\d,.]+\)?)<\/span>/g)].map((item) => parseNum(item[1] ?? ""));
     const total = nums.at(-1);
     if (total === undefined) {

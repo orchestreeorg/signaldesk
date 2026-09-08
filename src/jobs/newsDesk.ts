@@ -50,19 +50,24 @@ export async function runNewsDesk(
   const emits: EmitResult[] = [];
 
   for (const item of items) {
-    const classified = await classifyRawItem(item, deps.llm, novelty, item.publishedAt);
-    novelty.remember?.(classified.fingerprint, item.publishedAt);
-    const draft = toNewEvent(item, classified);
-    const event = deps.persistEvent
-      ? await deps.persistEvent(draft)
-      : eventFromClassified(item, classified);
-    events.push(event);
-    if (classified.novelty === 0) {
-      continue;
+    try {
+      const classified = await classifyRawItem(item, deps.llm, novelty, item.publishedAt);
+      novelty.remember?.(classified.fingerprint, item.publishedAt);
+      const draft = toNewEvent(item, classified);
+      const event = deps.persistEvent
+        ? await deps.persistEvent(draft)
+        : eventFromClassified(item, classified);
+      events.push(event);
+      if (classified.novelty === 0) {
+        continue;
+      }
+      const asset = event.assets[0] ?? "BTC";
+      const snapshot = (await deps.snapshotFor?.(asset, now)) ?? quietSnapshot(asset, now);
+      emits.push(...(await deps.policy.handle(event, snapshot, now)));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`news: skip item ${item.url}: ${message}`);
     }
-    const asset = event.assets[0] ?? "BTC";
-    const snapshot = (await deps.snapshotFor?.(asset, now)) ?? quietSnapshot(asset, now);
-    emits.push(...(await deps.policy.handle(event, snapshot, now)));
   }
   return { events, emits };
 }
