@@ -2,6 +2,12 @@ import { spawn } from "node:child_process";
 import { ops } from "../../ops/log.js";
 import { collapseRawItems } from "./collapse.js";
 import { ingestFeed } from "./ingest.js";
+import {
+  DEFAULT_BTC_LARGE_TX_BTC,
+  DEFAULT_MEMPOOL_API_BASE,
+  ingestEsplora,
+  type FetchJson,
+} from "./parseMempool.js";
 import { NEWS_SOURCES, type NewsSource } from "./sources.js";
 import type { RawItem } from "./types.js";
 
@@ -57,13 +63,14 @@ function isAbort(error: unknown): boolean {
   return error.name === "TimeoutError" || error.name === "AbortError" || /aborted|timeout/i.test(error.message);
 }
 
-export async function fetchFeedXml(
-  source: NewsSource,
+export async function fetchUrl(
+  url: string,
+  sourceId: string,
   fetchImpl: typeof fetch = fetch,
   fallbackGet: (url: string) => Promise<string> = curlGet,
 ): Promise<string> {
   try {
-    const response = await fetchImpl(source.url, {
+    const response = await fetchImpl(url, {
       headers: NEWS_HEADERS,
       signal: AbortSignal.timeout(15_000),
     });
@@ -71,31 +78,52 @@ export async function fetchFeedXml(
       return response.text();
     }
     if (response.status === 403 || response.status === 503) {
-      ops("news", "source.fallback", `Node fetch ${source.id} HTTP ${response.status}; retrying with curl`, {
+      ops("news", "source.fallback", `Node fetch ${sourceId} HTTP ${response.status}; retrying with curl`, {
         level: "warn",
-        data: { sourceId: source.id, status: response.status },
+        data: { sourceId, status: response.status, url },
       });
-      return fallbackGet(source.url);
+      return fallbackGet(url);
     }
-    throw new Error(`${source.id} HTTP ${response.status}`);
+    throw new Error(`${sourceId} HTTP ${response.status}`);
   } catch (error: unknown) {
     if (isAbort(error)) {
-      ops("news", "source.fallback", `Node fetch ${source.id} timed out; retrying with curl`, {
+      ops("news", "source.fallback", `Node fetch ${sourceId} timed out; retrying with curl`, {
         level: "warn",
-        data: { sourceId: source.id },
+        data: { sourceId, url },
       });
-      return fallbackGet(source.url);
+      return fallbackGet(url);
     }
     throw error;
   }
 }
 
+export async function fetchFeedXml(
+  source: NewsSource,
+  fetchImpl: typeof fetch = fetch,
+  fallbackGet: (url: string) => Promise<string> = curlGet,
+): Promise<string> {
+  return fetchUrl(source.url, source.id, fetchImpl, fallbackGet);
+}
+
+export async function defaultFetchJson(
+  url: string,
+  fetchImpl: typeof fetch = fetch,
+  fallbackGet: (url: string) => Promise<string> = curlGet,
+): Promise<unknown> {
+  const body = await fetchUrl(url, "mempool", fetchImpl, fallbackGet);
+  return JSON.parse(body) as unknown;
+}
+
 export async function pollNews(opts?: {
   sources?: NewsSource[];
   fetchXml?: FetchXml;
+  fetchJson?: FetchJson;
+  largeTxBtc?: number;
+  mempoolApiBase?: string;
 }): Promise<RawItem[]> {
   const sources = opts?.sources ?? NEWS_SOURCES;
   const fetchXml = opts?.fetchXml ?? fetchFeedXml;
+  const fetchJson = opts?.fetchJson ?? defaultFetchJson;
   const items: RawItem[] = [];
   ops("news", "round.start", `News poll starting (${sources.map((source) => source.id).join(", ")})`, {
     data: { sources: sources.map((source) => source.id) },
@@ -105,7 +133,14 @@ export async function pollNews(opts?: {
       data: { sourceId: source.id, url: source.url, kind: source.kind },
     });
     try {
-      const ingested = ingestFeed(source, await fetchXml(source));
+      const ingested =
+        source.kind === "esplora"
+          ? await ingestEsplora(source, {
+              fetchJson,
+              apiBase: opts?.mempoolApiBase ?? (source.url || DEFAULT_MEMPOOL_API_BASE),
+              thresholdBtc: opts?.largeTxBtc ?? DEFAULT_BTC_LARGE_TX_BTC,
+            })
+          : ingestFeed(source, await fetchXml(source));
       items.push(...ingested);
       ops("news", "source.ok", `${source.id}: kept ${ingested.length} item(s)`, {
         level: "ok",

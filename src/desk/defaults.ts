@@ -90,6 +90,14 @@ export const SEED_NEWS_SOURCES: NewsSourceRow[] = [
     kind: "html",
     enabled: true,
   },
+  {
+    id: "mempool",
+    name: "mempool.space",
+    url: "https://mempool.space/api",
+    rank: 70,
+    kind: "esplora",
+    enabled: true,
+  },
 ];
 
 export const SAMPLE_HEADLINE_TITLES = [

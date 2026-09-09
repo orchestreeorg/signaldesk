@@ -150,7 +150,11 @@ export async function startWorker(): Promise<{
         const settings = await loadDeskSettings(pool);
         const catalog = await loadNewsSources(pool);
         policy.applySettings(settings);
-        const fetched = await pollNews({ sources: enabledSources(catalog) });
+        const fetched = await pollNews({
+          sources: enabledSources(catalog),
+          largeTxBtc: config.BTC_LARGE_TX_BTC,
+          mempoolApiBase: config.MEMPOOL_API_BASE,
+        });
         const items = await persistRawItems(pool, fetched, { limit: settings.newsBatchLimit });
         ops("news", "persist", `Persisting ${items.length} new item(s) (cap ${settings.newsBatchLimit}; ${fetched.length} fetched)`, {
           data: { persisted: items.length, fetched: fetched.length, cap: settings.newsBatchLimit },

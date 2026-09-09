@@ -34,6 +34,14 @@ const envSchema = z.object({
   LLM_API_KEY: z.string().default(""),
   LLM_BASE_URL: z.string().default("https://api.openai.com/v1"),
   LLM_MODEL: z.string().default("gpt-4o-mini"),
+  BTC_LARGE_TX_BTC: z.preprocess(
+    (value) => (value === undefined || value === "" ? 1000 : value),
+    z.coerce.number().finite().gte(1).lte(21_000_000),
+  ),
+  MEMPOOL_API_BASE: z.preprocess(
+    (value) => (value === undefined || value === "" ? "https://mempool.space/api" : value),
+    z.string().url({ message: "MEMPOOL_API_BASE must be a valid URL" }),
+  ),
 });
 
 export type Config = z.output<typeof envSchema>;
@@ -50,6 +58,8 @@ function readEnv(env: NodeJS.ProcessEnv) {
     LLM_API_KEY: env.LLM_API_KEY,
     LLM_BASE_URL: env.LLM_BASE_URL,
     LLM_MODEL: env.LLM_MODEL,
+    BTC_LARGE_TX_BTC: env.BTC_LARGE_TX_BTC,
+    MEMPOOL_API_BASE: env.MEMPOOL_API_BASE,
   };
 }
 

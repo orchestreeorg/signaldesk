@@ -20,6 +20,9 @@ export function heuristicExtract(item: RawItem): LlmExtract {
   const assets = assetsOf(text);
   const summary = item.title.slice(0, 280);
 
+  if (item.sourceId === "mempool") {
+    return { class: "OTHER", assets: ["BTC"], polarity: 0, summary };
+  }
   if (item.sourceId === "farside" || /\betf\b/.test(lower)) {
     const polarity = /outflow/.test(lower) ? -0.7 : 0.7;
     return { class: "ETF_INFLOW", assets: assets.length ? assets : ["BTC"], polarity, summary };

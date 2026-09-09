@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pollNews } from "../../src/collectors/news/poll.js";
 import { DEFAULT_DESK_SETTINGS } from "../../src/desk/defaults.js";
-import { enabledSources, loadDeskSettings, loadNewsSources, saveDeskSettings, saveNewsSources } from "../../src/desk/settings.js";
+import { applyDeskPut, enabledSources, loadDeskSettings, loadNewsSources, saveDeskSettings, saveNewsSources } from "../../src/desk/settings.js";
 import { createPool } from "../../src/db/client.js";
 import { fuse } from "../../src/fusion/index.js";
 import { sendHeadlines } from "../../src/telegram/send.js";
@@ -9,7 +9,7 @@ import type { Event, FeatureSnapshot } from "../../src/domain/index.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 
-describe.skipIf(!databaseUrl)("desk settings persistence", () => {
+describe.skipIf(!databaseUrl)("desk settings persistence", { timeout: 20_000 }, () => {
   const pool = createPool(databaseUrl ?? "");
   let originalSources: Awaited<ReturnType<typeof loadNewsSources>> = [];
 
@@ -103,5 +103,56 @@ describe.skipIf(!databaseUrl)("desk settings persistence", () => {
     });
     expect(hits).toEqual(["coindesk"]);
     await saveNewsSources(pool, catalog);
+  });
+
+  it("upserts desk_settings when the row is missing", async () => {
+    await pool.query("DELETE FROM desk_settings WHERE id = 1");
+    const saved = await saveDeskSettings(pool, { ...DEFAULT_DESK_SETTINGS, headlineSend: "skip_neutral", toneMode: "strict" });
+    expect(saved.headlineSend).toBe("skip_neutral");
+    expect(saved.toneMode).toBe("strict");
+    const loaded = await loadDeskSettings(pool);
+    expect(loaded.headlineSend).toBe("skip_neutral");
+    expect(loaded.toneMode).toBe("strict");
+  });
+
+  it("persists headline_send when source writes fail", async () => {
+    const before = await loadNewsSources(pool);
+    const result = await applyDeskPut(pool, {
+      settings: { ...DEFAULT_DESK_SETTINGS, headlineSend: "skip_neutral", toneMode: "strict" },
+      sources: [
+        { id: "dup", name: "A", url: "https://example.com/a", rank: 70, kind: "rss", enabled: true },
+        { id: "dup", name: "B", url: "https://example.com/b", rank: 71, kind: "rss", enabled: true },
+      ],
+    });
+    expect(result.settings.headlineSend).toBe("skip_neutral");
+    expect(result.sourcesError).toBeTruthy();
+    expect(result.sources.map((source) => source.id).sort()).toEqual(before.map((source) => source.id).sort());
+
+    const skipped = await applyDeskPut(pool, {
+      settings: { ...DEFAULT_DESK_SETTINGS, headlineSend: "skip_neutral", toneMode: "strict" },
+      sourcesError: "source kind must be rss, atom, html, or esplora",
+    });
+    expect(skipped.settings.headlineSend).toBe("skip_neutral");
+    expect(skipped.sourcesError).toMatch(/source kind/);
+
+    const sent: string[] = [];
+    const rows = await sendHeadlines(
+      { async send(_id: string, html: string) { sent.push(html); } },
+      {
+        chatId: "1",
+        dryRun: false,
+        settings: result.settings,
+        items: [
+          { sourceId: "edgar", title: "SCHEDULE 13D/A - Fund 1 Investments, LLC (Filed by)", url: "https://www.sec.gov/x" },
+          { sourceId: "coindesk", title: "Spot ETF posts record inflow", url: "https://www.coindesk.com/etf" },
+        ],
+      },
+    );
+    expect(rows[0]?.sent).toBe(false);
+    if (rows[0] && !rows[0].sent) {
+      expect(rows[0].reason).toBe("filtered");
+    }
+    expect(rows[1]?.sent).toBe(true);
+    expect(sent).toHaveLength(1);
   });
 });

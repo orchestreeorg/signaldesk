@@ -169,6 +169,30 @@ describe("classify", () => {
     expect(second.fingerprint).toBe(first.fingerprint);
   });
 
+  it("does not let the LLM relabel a mempool transfer", async () => {
+    let called = 0;
+    const classified = await classifyRawItem(
+      item({
+        url: "https://mempool.space/tx/aa11",
+        title: "Large BTC transfer: 1,240 BTC",
+        body: "1,240 BTC on-chain. tx aa11. block 900001.",
+        sourceId: "mempool",
+        sourceRank: 70,
+      }),
+      {
+        async extract() {
+          called += 1;
+          return { class: "ETF_INFLOW", assets: ["ETH"], polarity: 0.9, summary: "should be ignored" };
+        },
+      },
+      new MemoryNoveltyIndex(),
+    );
+    expect(called).toBe(0);
+    expect(classified.class).toBe("OTHER");
+    expect(classified.assets).toEqual(["BTC"]);
+    expect(classified.polarity).toBe(0);
+  });
+
   it("falls back to the heuristic when the LLM throws", async () => {
     const classified = await classifyRawItem(
       item({

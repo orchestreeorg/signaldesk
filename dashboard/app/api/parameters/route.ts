@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import pg from "pg";
 import { DEFAULT_DESK_SETTINGS } from "../../../../src/desk/defaults.js";
-import {
-  loadDeskSettings,
-  loadNewsSources,
-  saveDeskSettings,
-  saveNewsSources,
-} from "../../../../src/desk/settings.js";
-import { parseDeskBundle } from "../../../../src/desk/validate.js";
+import { applyDeskPut, loadDeskSettings, loadNewsSources } from "../../../../src/desk/settings.js";
+import { parseDeskPut } from "../../../../src/desk/validate.js";
 import { dashSecret, databaseUrl } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -52,14 +47,11 @@ export async function PUT(request: NextRequest) {
     return denied;
   }
   try {
-    const parsed = parseDeskBundle(await request.json(), DEFAULT_DESK_SETTINGS);
+    const parsed = parseDeskPut(await request.json(), DEFAULT_DESK_SETTINGS);
     if ("error" in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    const payload = await withPool(async (pool) => ({
-      settings: await saveDeskSettings(pool, parsed.settings),
-      sources: await saveNewsSources(pool, parsed.sources),
-    }));
+    const payload = await withPool((pool) => applyDeskPut(pool, parsed));
     return NextResponse.json({ ok: true, ...payload });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

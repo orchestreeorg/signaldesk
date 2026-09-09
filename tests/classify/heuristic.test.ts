@@ -29,4 +29,15 @@ describe("heuristic extract", () => {
     expect(stress.class).toBe("EXCHANGE_STRESS");
     expect(stress.polarity).toBeLessThan(0);
   });
+
+  it("maps mempool large transfers as unsigned OTHER", () => {
+    const print = heuristicExtract(
+      item({
+        sourceId: "mempool",
+        title: "Large BTC transfer: 1,240 BTC",
+        body: "1,240 BTC on-chain. tx abc. block 900001.",
+      }),
+    );
+    expect(print).toMatchObject({ class: "OTHER", assets: ["BTC"], polarity: 0 });
+  });
 });

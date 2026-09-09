@@ -140,7 +140,7 @@ export function parseSources(raw: unknown): NewsSourceRow[] | { error: string } 
       return { error: "source rank must be between 0 and 100" };
     }
     if (!(NEWS_SOURCE_KINDS as readonly string[]).includes(kind)) {
-      return { error: "source kind must be rss, atom, or html" };
+      return { error: "source kind must be rss, atom, html, or esplora" };
     }
     sources.push({
       id,
@@ -155,6 +155,21 @@ export function parseSources(raw: unknown): NewsSourceRow[] | { error: string } 
 }
 
 export function parseDeskBundle(raw: unknown, fallback: DeskSettings): DeskBundle | { error: string } {
+  const parsed = parseDeskPut(raw, fallback);
+  if ("error" in parsed) {
+    return parsed;
+  }
+  if (parsed.sourcesError || !parsed.sources) {
+    return { error: parsed.sourcesError ?? "sources must be an array" };
+  }
+  return { settings: parsed.settings, sources: parsed.sources };
+}
+
+/** Settings always parse; invalid sources become sourcesError so tone/headline can still save. */
+export function parseDeskPut(
+  raw: unknown,
+  fallback: DeskSettings,
+): { settings: DeskSettings; sources?: NewsSourceRow[]; sourcesError?: string } | { error: string } {
   if (!raw || typeof raw !== "object") {
     return { error: "body must be an object" };
   }
@@ -163,9 +178,12 @@ export function parseDeskBundle(raw: unknown, fallback: DeskSettings): DeskBundl
   if ("error" in settings) {
     return settings;
   }
+  if (!("sources" in body)) {
+    return { settings, sourcesError: "sources were not saved" };
+  }
   const sources = parseSources(body.sources);
   if ("error" in sources) {
-    return sources;
+    return { settings, sourcesError: sources.error };
   }
   return { settings, sources };
 }

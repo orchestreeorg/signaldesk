@@ -47,15 +47,19 @@ export async function classifyRawItem(
   now = item.publishedAt,
 ): Promise<Classification> {
   let extracted;
-  try {
-    extracted = sanitizeExtract(await llm.extract(item));
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    ops("news", "item.heuristic", `LLM failed on ${item.url}; using heuristic (${message})`, {
-      level: "warn",
-      data: { url: item.url, reason: message },
-    });
+  if (item.sourceId === "mempool") {
     extracted = sanitizeExtract(heuristicExtract(item));
+  } else {
+    try {
+      extracted = sanitizeExtract(await llm.extract(item));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      ops("news", "item.heuristic", `LLM failed on ${item.url}; using heuristic (${message})`, {
+        level: "warn",
+        data: { url: item.url, reason: message },
+      });
+      extracted = sanitizeExtract(heuristicExtract(item));
+    }
   }
   const assets = extracted.assets.length > 0 ? extracted.assets : inferAssets(`${item.title} ${item.body}`);
   const scored = credibilityOf({

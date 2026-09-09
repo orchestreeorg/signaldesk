@@ -1,4 +1,4 @@
-export const NEWS_SOURCE_KINDS = ["rss", "atom", "html"] as const;
+export const NEWS_SOURCE_KINDS = ["rss", "atom", "html", "esplora"] as const;
 export type NewsSourceKind = (typeof NEWS_SOURCE_KINDS)[number];
 
 export type NewsSource = {
@@ -44,6 +44,13 @@ export const NEWS_SOURCES: NewsSource[] = [
     url: "https://farside.co.uk/btc/",
     rank: 80,
     kind: "html",
+  },
+  {
+    id: "mempool",
+    name: "mempool.space",
+    url: "https://mempool.space/api",
+    rank: 70,
+    kind: "esplora",
   },
 ];
 

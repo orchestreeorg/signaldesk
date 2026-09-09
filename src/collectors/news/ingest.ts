@@ -39,6 +39,9 @@ export function ingestFeedXml(source: NewsSource, xml: string): RawItem[] {
 }
 
 export function ingestFeed(source: NewsSource, body: string): RawItem[] {
+  if (source.kind === "esplora") {
+    throw new Error("esplora sources must use ingestEsplora, not ingestFeed");
+  }
   const parsed = source.kind === "html" ? parseFarsideHtml(body, source.url) : parseFeed(body);
   return collapseRawItems(parsed.map((item) => toRawItem(source, item)));
 }

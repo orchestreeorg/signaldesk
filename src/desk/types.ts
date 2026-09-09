@@ -25,6 +25,6 @@ export type NewsSourceRow = {
   name: string;
   url: string;
   rank: number;
-  kind: "rss" | "atom" | "html";
+  kind: "rss" | "atom" | "html" | "esplora";
   enabled: boolean;
 };

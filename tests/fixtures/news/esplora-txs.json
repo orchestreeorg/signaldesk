@@ -1,0 +1,22 @@
+[
+  {
+    "txid": "aa11large1500aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "vin": [{ "is_coinbase": false }],
+    "vout": [{ "value": 150000000000 }]
+  },
+  {
+    "txid": "bb22small200bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "vin": [{ "is_coinbase": false }],
+    "vout": [{ "value": 20000000000 }]
+  },
+  {
+    "txid": "cc33coinbasecccccccccccccccccccccccccccccccccccccccccccccccc",
+    "vin": [{ "is_coinbase": true }],
+    "vout": [{ "value": 150000000000 }]
+  },
+  {
+    "txid": "dd44twolargedddddddddddddddddddddddddddddddddddddddddddddddd",
+    "vin": [{ "is_coinbase": false }],
+    "vout": [{ "value": 110000000000 }, { "value": 120000000000 }]
+  }
+]

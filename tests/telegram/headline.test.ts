@@ -7,7 +7,7 @@ import { renderHeadline } from "../../src/telegram/html.js";
 import { sendAlert, sendHeadline, sendHeadlines } from "../../src/telegram/send.js";
 import { ChatStore } from "../../src/telegram/store.js";
 import { DEFAULT_DESK_SETTINGS } from "../../src/desk/defaults.js";
-import { headlineTone } from "../../src/telegram/tone.js";
+import { headlineTone, shouldSendHeadline } from "../../src/telegram/tone.js";
 import type { OutgoingAlert } from "../../src/telegram/types.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -72,6 +72,10 @@ describe("headline tone", () => {
     expect(headlineTone("SCHEDULE 13D/A - Fund 1 Investments, LLC (Filed by)")).toBe("NEUTRAL");
     expect(headlineTone("Federal Reserve Board announces meeting minutes")).toBe("NEUTRAL");
     expect(headlineTone("What bitcoin did this week")).toBe("NEUTRAL");
+    expect(headlineTone("Large BTC transfer: 1,240 BTC")).toBe("NEUTRAL");
+    expect(headlineTone("Large BTC transfer: 1,240 BTC", { ...DEFAULT_DESK_SETTINGS, toneMode: "strict" })).toBe(
+      "NEUTRAL",
+    );
   });
 
   it("stays NEUTRAL when both sides hit in balanced mode", () => {
@@ -80,6 +84,13 @@ describe("headline tone", () => {
 
   it("loose picks a side when hit counts differ", () => {
     expect(headlineTone("ETF inflow after exchange hack", loose)).toBe("BULLISH");
+  });
+
+  it("skip_neutral drops NEUTRAL and still sends directional titles", () => {
+    const skip = { ...DEFAULT_DESK_SETTINGS, headlineSend: "skip_neutral" as const };
+    expect(shouldSendHeadline("NEUTRAL", skip)).toBe(false);
+    expect(shouldSendHeadline("BULLISH", skip)).toBe(true);
+    expect(shouldSendHeadline("BEARISH", skip)).toBe(true);
   });
 });
 

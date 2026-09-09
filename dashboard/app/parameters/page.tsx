@@ -27,7 +27,7 @@ type SourceDraft = {
   name: string;
   url: string;
   rank: number;
-  kind: "rss" | "atom" | "html";
+  kind: "rss" | "atom" | "html" | "esplora";
   enabled: boolean;
 };
 
@@ -113,8 +113,33 @@ export default function ParametersPage() {
         headers: dashHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ settings, sources }),
       });
-      const json = (await response.json()) as { ok?: boolean; error?: string };
-      setNotice(json.error ?? (json.ok ? "Saved. Next news job uses these values (no worker restart)." : "Save failed"));
+      const json = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        sourcesError?: string;
+        settings?: DeskSettings;
+        sources?: SourceDraft[];
+      };
+      if (json.settings) {
+        setSettings(json.settings);
+      }
+      if (json.sources && !json.sourcesError) {
+        setSources(json.sources);
+      }
+      if (response.status === 401 || json.error === "unauthorized") {
+        setLocked(true);
+        setNotice("Enter DASH_SECRET (Vercel env) to unlock Parameters.");
+        return;
+      }
+      if (json.error && !json.ok) {
+        setNotice(json.error);
+        return;
+      }
+      if (json.ok && json.sourcesError) {
+        setNotice(`Settings saved. Sources not updated: ${json.sourcesError}`);
+        return;
+      }
+      setNotice(json.ok ? "Saved. Next news job uses these values (no worker restart)." : "Save failed");
     } finally {
       setBusy(false);
     }
@@ -256,6 +281,7 @@ export default function ParametersPage() {
                     <option value="rss">rss</option>
                     <option value="atom">atom</option>
                     <option value="html">html</option>
+                    <option value="esplora">esplora</option>
                   </select>
                 </td>
               </tr>

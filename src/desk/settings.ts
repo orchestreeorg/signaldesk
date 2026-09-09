@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS news_sources (
   name text NOT NULL,
   url text NOT NULL,
   rank integer NOT NULL CHECK (rank >= 0 AND rank <= 100),
-  kind text NOT NULL CHECK (kind IN ('rss', 'atom', 'html')),
+  kind text NOT NULL CHECK (kind IN ('rss', 'atom', 'html', 'esplora')),
   enabled boolean NOT NULL DEFAULT true
 );
 
@@ -126,22 +126,28 @@ export async function loadDeskSettings(pool: pg.Pool): Promise<DeskSettings> {
 export async function saveDeskSettings(pool: pg.Pool, settings: DeskSettings): Promise<DeskSettings> {
   await ensureDeskTables(pool);
   await pool.query(
-    `UPDATE desk_settings SET
-       headline_enabled = $1,
-       tone_mode = $2,
-       headline_send = $3,
-       bullish_terms = $4,
-       bearish_terms = $5,
-       flash_enabled = $6,
-       fade_enabled = $7,
-       high_novelty = $8,
-       high_credibility = $9,
-       fade_credibility = $10,
-       loud_narrative = $11,
-       flash_daily_cap = $12,
-       news_batch_limit = $13,
-       updated_at = now()
-     WHERE id = 1`,
+    `INSERT INTO desk_settings (
+       id, headline_enabled, tone_mode, headline_send, bullish_terms, bearish_terms,
+       flash_enabled, fade_enabled, high_novelty, high_credibility, fade_credibility,
+       loud_narrative, flash_daily_cap, news_batch_limit, updated_at
+     ) VALUES (
+       1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now()
+     )
+     ON CONFLICT (id) DO UPDATE SET
+       headline_enabled = EXCLUDED.headline_enabled,
+       tone_mode = EXCLUDED.tone_mode,
+       headline_send = EXCLUDED.headline_send,
+       bullish_terms = EXCLUDED.bullish_terms,
+       bearish_terms = EXCLUDED.bearish_terms,
+       flash_enabled = EXCLUDED.flash_enabled,
+       fade_enabled = EXCLUDED.fade_enabled,
+       high_novelty = EXCLUDED.high_novelty,
+       high_credibility = EXCLUDED.high_credibility,
+       fade_credibility = EXCLUDED.fade_credibility,
+       loud_narrative = EXCLUDED.loud_narrative,
+       flash_daily_cap = EXCLUDED.flash_daily_cap,
+       news_batch_limit = EXCLUDED.news_batch_limit,
+       updated_at = now()`,
     [
       settings.headlineEnabled,
       settings.toneMode,
@@ -179,15 +185,49 @@ export async function loadNewsSources(pool: pg.Pool): Promise<NewsSourceRow[]> {
 
 export async function saveNewsSources(pool: pg.Pool, sources: NewsSourceRow[]): Promise<NewsSourceRow[]> {
   await ensureDeskTables(pool);
-  await pool.query("DELETE FROM news_sources");
-  for (const source of sources) {
-    await pool.query(
-      `INSERT INTO news_sources (id, name, url, rank, kind, enabled)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [source.id, source.name, source.url, source.rank, source.kind, source.enabled],
-    );
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM news_sources");
+    for (const source of sources) {
+      await client.query(
+        `INSERT INTO news_sources (id, name, url, rank, kind, enabled)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [source.id, source.name, source.url, source.rank, source.kind, source.enabled],
+      );
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
   return loadNewsSources(pool);
+}
+
+export async function applyDeskPut(
+  pool: pg.Pool,
+  input: { settings: DeskSettings; sources?: NewsSourceRow[]; sourcesError?: string },
+): Promise<{ settings: DeskSettings; sources: NewsSourceRow[]; sourcesError?: string }> {
+  const settings = await saveDeskSettings(pool, input.settings);
+  if (input.sourcesError || !input.sources) {
+    return {
+      settings,
+      sources: await loadNewsSources(pool),
+      sourcesError: input.sourcesError ?? "sources were not saved",
+    };
+  }
+  try {
+    return { settings, sources: await saveNewsSources(pool, input.sources) };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      settings,
+      sources: await loadNewsSources(pool),
+      sourcesError: message,
+    };
+  }
 }
 
 export function enabledSources(sources: NewsSourceRow[]): NewsSourceRow[] {
