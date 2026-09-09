@@ -36,6 +36,10 @@ type OverviewPayload = {
   marks: { BTC?: number; ETH?: number } | null;
   sentiment: { source: string; asset: string; up: number; down: number; score: number; label: string; asOf: string } | null;
   fearGreed: { source: string; value: number; classification: string; greed: number; fear: number; asOf: string } | null;
+  ovx: { source: string; value: number; classification: string; stress: number; calm: number; asOf: string } | null;
+  gpr: { source: string; value: number; classification: string; stress: number; calm: number; asOf: string } | null;
+  gold: { source: string; symbol: string; value: number; changePct: number | null; asOf: string } | null;
+  sp500: { source: string; seriesId: string; value: number; changePct: number | null; asOf: string } | null;
   error?: string;
 };
 
@@ -127,17 +131,25 @@ export default function OverviewPage() {
       ) : (
         <>
           <article className="card large-btc-card">
-            <h2>Large BTC</h2>
             {!data ? (
-              <Spinner label="Loading large BTC" tall />
+              <>
+                <h2>Large BTC</h2>
+                <Spinner label="Loading large BTC" tall />
+              </>
             ) : data.largeBtc.length ? (
               <>
-                <div className="metric">{formatBtc(data.largeBtc.reduce((sum, row) => sum + (row.btc ?? 0), 0))}</div>
-                <div className="meta">{data.largeBtc.length} mempool prints · last 24h</div>
+                <div className="quote-row">
+                  <h2>Large BTC</h2>
+                  <div className="metric">{formatBtc(data.largeBtc.reduce((sum, row) => sum + (row.btc ?? 0), 0))}</div>
+                  <div className="meta">{data.largeBtc.length} prints · 24h</div>
+                </div>
                 <BtcBars rows={data.largeBtc} />
               </>
             ) : (
-              <p className="empty-inline">No large BTC prints</p>
+              <>
+                <h2>Large BTC</h2>
+                <p className="empty-inline">No large BTC prints</p>
+              </>
             )}
           </article>
 
@@ -148,7 +160,7 @@ export default function OverviewPage() {
                 <Spinner label="Loading sentiment" />
               ) : data.sentiment ? (
                 <>
-                  <div className="metric">{data.sentiment.label}</div>
+                  <div className={`metric ${signedClass(data.sentiment.score)}`}>{data.sentiment.label}</div>
                   <div className="mix-bar" aria-hidden="true">
                     <span className="bull" style={{ width: `${data.sentiment.up}%` }} />
                     <span className="bear" style={{ width: `${data.sentiment.down}%` }} />
@@ -205,7 +217,7 @@ export default function OverviewPage() {
                 <Spinner label="Loading news mix" />
               ) : (
                 <>
-                  <div className="metric">{data.mix.score === null ? "mix n/a" : data.mixLabel}</div>
+                  <div className={`metric ${signedClass(data.mix.score)}`}>{data.mix.score === null ? "n/a" : data.mixLabel}</div>
                   {mixTotal > 0 ? (
                     <div className="mix-bar" aria-hidden="true">
                       <span className="bull" style={{ width: `${(data.mix.bull / mixTotal) * 100}%` }} />
@@ -266,6 +278,105 @@ export default function OverviewPage() {
             </article>
           </section>
 
+          <section className="overview-metrics">
+            <article className="card">
+              <h2>Oil vol (OVX)</h2>
+              {!data ? (
+                <Spinner label="Loading oil volatility" />
+              ) : data.ovx ? (
+                <>
+                  <div className={`metric ${signedClass(ovxSigned(data.ovx.classification))}`}>{data.ovx.value.toFixed(1)}</div>
+                  <div className="mix-bar" aria-hidden="true">
+                    <span className="bear" style={{ width: `${data.ovx.stress}%` }} />
+                    <span className="neutral" style={{ width: `${data.ovx.calm}%` }} />
+                  </div>
+                  <div className="mix-legend">
+                    <span>
+                      <b>{Math.round(data.ovx.stress)}</b> stress
+                    </span>
+                    <span>
+                      <b>{Math.round(data.ovx.calm)}</b> calm
+                    </span>
+                    <span>{data.ovx.classification}</span>
+                  </div>
+                  <div className="meta">FRED OVX · oil implied vol · not fusion</div>
+                </>
+              ) : (
+                <>
+                  <div className="metric">n/a</div>
+                  <div className="meta">FRED OVX · unavailable (needs FRED_API_KEY)</div>
+                </>
+              )}
+            </article>
+            <article className="card">
+              <h2>Daily GPR</h2>
+              {!data ? (
+                <Spinner label="Loading geopolitical risk" />
+              ) : data.gpr ? (
+                <>
+                  <div className={`metric ${signedClass(ovxSigned(data.gpr.classification))}`}>{data.gpr.value.toFixed(1)}</div>
+                  <div className="mix-bar" aria-hidden="true">
+                    <span className="bear" style={{ width: `${data.gpr.stress}%` }} />
+                    <span className="neutral" style={{ width: `${data.gpr.calm}%` }} />
+                  </div>
+                  <div className="mix-legend">
+                    <span>
+                      <b>{Math.round(data.gpr.stress)}</b> stress
+                    </span>
+                    <span>
+                      <b>{Math.round(data.gpr.calm)}</b> calm
+                    </span>
+                    <span>{data.gpr.classification}</span>
+                  </div>
+                  <div className="meta">Caldara–Iacoviello daily GPR · not fusion</div>
+                </>
+              ) : (
+                <>
+                  <div className="metric">n/a</div>
+                  <div className="meta">Daily GPR · unavailable</div>
+                </>
+              )}
+            </article>
+            <article className="card">
+              <h2>Gold</h2>
+              {!data ? (
+                <Spinner label="Loading gold price" />
+              ) : data.gold ? (
+                <>
+                  <div className="quote-row">
+                    <div className={`metric ${signedClass(data.gold.changePct)}`}>{formatUsd(data.gold.value)}</div>
+                    <div className={`quote-delta ${signedClass(data.gold.changePct)}`}>{formatPct(data.gold.changePct)}</div>
+                  </div>
+                  <div className="meta">Yahoo GC=F · USD/oz · not fusion</div>
+                </>
+              ) : (
+                <>
+                  <div className="metric">n/a</div>
+                  <div className="meta">Gold futures · unavailable</div>
+                </>
+              )}
+            </article>
+            <article className="card">
+              <h2>S&amp;P 500</h2>
+              {!data ? (
+                <Spinner label="Loading S&P 500" />
+              ) : data.sp500 ? (
+                <>
+                  <div className="quote-row">
+                    <div className={`metric ${signedClass(data.sp500.changePct)}`}>{formatIndex(data.sp500.value)}</div>
+                    <div className={`quote-delta ${signedClass(data.sp500.changePct)}`}>{formatPct(data.sp500.changePct)}</div>
+                  </div>
+                  <div className="meta">FRED SP500 · not fusion</div>
+                </>
+              ) : (
+                <>
+                  <div className="metric">n/a</div>
+                  <div className="meta">FRED SP500 · unavailable (needs FRED_API_KEY)</div>
+                </>
+              )}
+            </article>
+          </section>
+
           <section className="card stack overview-headlines">
             <h2>Headlines</h2>
             <div className="tabs">
@@ -282,13 +393,21 @@ export default function OverviewPage() {
                 <p className="empty-inline">No headlines</p>
               )
             ) : (
-              <ul className="news-list">
+              <>
+                <div className="blotter-head">
+                  <span>Side</span>
+                  <span>Source</span>
+                  <span>Headline</span>
+                  <span>Time</span>
+                </div>
+                <ul className="news-list">
                 {headlines.map((row) => (
                   <li key={`${row.url}-${row.publishedAt}`}>
                     <HeadlineRow row={row} />
                   </li>
                 ))}
-              </ul>
+                </ul>
+              </>
             )}
           </section>
           <p className="note">{notice || (data ? `Updated ${data.now.slice(11, 16)} UTC` : "Loading overview…")}</p>
@@ -304,6 +423,45 @@ function Spinner(props: { label: string; tall?: boolean }) {
       <span className="spinner" />
     </div>
   );
+}
+
+function signedClass(score: number | null | undefined): string {
+  if (score == null || score === 0) {
+    return "";
+  }
+  return score > 0 ? "metric-up" : "metric-down";
+}
+
+function ovxSigned(classification: string): number {
+  if (classification === "Calm") {
+    return 1;
+  }
+  if (classification === "Elevated" || classification === "High") {
+    return -1;
+  }
+  return 0;
+}
+
+function formatUsd(n: number): string {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+}
+
+function formatIndex(n: number): string {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatPct(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) {
+    return "n/a";
+  }
+  const abs = Math.abs(n).toFixed(2);
+  if (n > 0) {
+    return `+${abs}%`;
+  }
+  if (n < 0) {
+    return `−${abs}%`;
+  }
+  return `${abs}%`;
 }
 
 function formatBtc(n: number): string {
@@ -363,7 +521,7 @@ function HeadlineRow(props: { row: Headline }) {
       <span className={`tone tone-${props.row.tone}`}>{props.row.tone}</span>
       <span className="source-chip">{props.row.sourceId}</span>
       {title}
-      <span className="ts">{time} UTC</span>
+      <span className="ts">{time}</span>
     </div>
   );
 }
