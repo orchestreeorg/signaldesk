@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BrandLogo } from "./logo";
 
 export function StatusChip(props: { online: boolean; paused?: boolean; label: string }) {
   const state = props.online ? (props.paused ? "pause" : "on") : "off";
@@ -41,12 +42,8 @@ export function AppShell(props: {
   return (
     <div className="app">
       <header className="appbar">
-        <a className="brand" href="/">
-          <span className="brand-mark">SD</span>
-          <span className="brand-copy">
-            <strong>signal-desk</strong>
-            <span>BTC / ETH research</span>
-          </span>
+        <a className="brand" href="/" aria-label="Signaldesk">
+          <BrandLogo />
         </a>
         <DeskNav current={props.current} extra={props.extra} />
       </header>

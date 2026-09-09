@@ -34,6 +34,8 @@ type OverviewPayload = {
   headlines: Headline[];
   classified: { class: string; n: number }[] | null;
   marks: { BTC?: number; ETH?: number } | null;
+  sentiment: { source: string; asset: string; up: number; down: number; score: number; label: string; asOf: string } | null;
+  fearGreed: { source: string; value: number; classification: string; greed: number; fear: number; asOf: string } | null;
   error?: string;
 };
 
@@ -124,120 +126,143 @@ export default function OverviewPage() {
         <p className="note">{notice}</p>
       ) : (
         <>
-          <section className="overview-split">
-            <article className="card large-btc-card">
-              <h2>Large BTC</h2>
+          <article className="card large-btc-card">
+            <h2>Large BTC</h2>
+            {!data ? (
+              <Spinner label="Loading large BTC" tall />
+            ) : data.largeBtc.length ? (
+              <>
+                <div className="metric">{formatBtc(data.largeBtc.reduce((sum, row) => sum + (row.btc ?? 0), 0))}</div>
+                <div className="meta">{data.largeBtc.length} mempool prints · last 24h</div>
+                <BtcBars rows={data.largeBtc} />
+              </>
+            ) : (
+              <p className="empty-inline">No large BTC prints</p>
+            )}
+          </article>
+
+          <section className="overview-metrics">
+            <article className="card">
+              <h2>CoinGecko sentiment</h2>
               {!data ? (
-                <Spinner label="Loading large BTC" tall />
-              ) : data.largeBtc.length ? (
+                <Spinner label="Loading sentiment" />
+              ) : data.sentiment ? (
                 <>
-                  <div className="metric">{formatBtc(data.largeBtc.reduce((sum, row) => sum + (row.btc ?? 0), 0))}</div>
-                  <div className="meta">{data.largeBtc.length} mempool prints · last 24h</div>
-                  <BtcBars rows={data.largeBtc} />
+                  <div className="metric">{data.sentiment.label}</div>
+                  <div className="mix-bar" aria-hidden="true">
+                    <span className="bull" style={{ width: `${data.sentiment.up}%` }} />
+                    <span className="bear" style={{ width: `${data.sentiment.down}%` }} />
+                  </div>
+                  <div className="mix-legend">
+                    <span>
+                      <b>{Math.round(data.sentiment.up)}%</b> up
+                    </span>
+                    <span>
+                      <b>{Math.round(data.sentiment.down)}%</b> down
+                    </span>
+                  </div>
+                  <div className="meta">BTC crowd votes · not fusion</div>
                 </>
               ) : (
-                <p className="empty-inline">No large BTC prints</p>
+                <>
+                  <div className="metric">n/a</div>
+                  <div className="meta">CoinGecko BTC votes · unavailable</div>
+                </>
               )}
             </article>
-
-            <article className="card overview-combined">
-              <section>
-                <h2>News mix</h2>
-                {!data ? (
-                  <Spinner label="Loading news mix" />
-                ) : (
-                  <>
-                    <div className="metric">{data.mix.score === null ? "mix n/a" : data.mixLabel}</div>
-                    {mixTotal > 0 ? (
-                      <div className="mix-bar" aria-hidden="true">
-                        <span className="bull" style={{ width: `${(data.mix.bull / mixTotal) * 100}%` }} />
-                        <span className="bear" style={{ width: `${(data.mix.bear / mixTotal) * 100}%` }} />
-                        <span className="neutral" style={{ width: `${(data.mix.neutral / mixTotal) * 100}%` }} />
-                      </div>
-                    ) : null}
-                    <div className="mix-legend">
-                      <span>
-                        <b>{data.mix.bull}</b> bull
-                      </span>
-                      <span>
-                        <b>{data.mix.bear}</b> bear
-                      </span>
-                      <span>
-                        <b>{data.mix.neutral}</b> neutral
-                      </span>
-                    </div>
-                  </>
-                )}
-              </section>
-              <section>
-                <h2>Calls</h2>
-                {!data ? (
-                  <Spinner label="Loading calls" />
-                ) : callTotal === 0 ? (
-                  <>
-                    <div className="metric">none</div>
-                    <div className="meta">Last: none</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="stat-row">
-                      <div className="stat">
-                        <span>FLASH</span>
-                        <strong>{data.calls.FLASH}</strong>
-                      </div>
-                      <div className="stat">
-                        <span>FADE</span>
-                        <strong>{data.calls.FADE}</strong>
-                      </div>
-                      <div className="stat">
-                        <span>CONFIRM</span>
-                        <strong>{data.calls.CONFIRM}</strong>
-                      </div>
-                      <div className="stat">
-                        <span>INVALIDATE</span>
-                        <strong>{data.calls.INVALIDATE}</strong>
-                      </div>
-                    </div>
-                    <div className="meta">
-                      {data.lastCall
-                        ? `Last: ${data.lastCall.kind} ${data.lastCall.asset} · ${data.lastCall.why} · ${data.lastCall.realizedText}`
-                        : "Last: none"}
-                    </div>
-                  </>
-                )}
-              </section>
+            <article className="card">
+              <h2>Fear &amp; greed</h2>
               {!data ? (
-                <section>
-                  <h2>Classified</h2>
-                  <Spinner label="Loading classified" />
-                </section>
-              ) : data.classified ? (
-                <section>
-                  <h2>Classified</h2>
+                <Spinner label="Loading fear and greed" />
+              ) : data.fearGreed ? (
+                <>
+                  <div className="metric">{data.fearGreed.value}</div>
+                  <div className="mix-bar" aria-hidden="true">
+                    <span className="bull" style={{ width: `${data.fearGreed.greed}%` }} />
+                    <span className="bear" style={{ width: `${data.fearGreed.fear}%` }} />
+                  </div>
                   <div className="mix-legend">
-                    {data.classified.map((row) => (
-                      <span key={row.class}>
-                        <b>{row.n}</b> {row.class}
-                      </span>
-                    ))}
+                    <span>
+                      <b>{Math.round(data.fearGreed.greed)}</b> greed
+                    </span>
+                    <span>
+                      <b>{Math.round(data.fearGreed.fear)}</b> fear
+                    </span>
+                    <span>{data.fearGreed.classification}</span>
                   </div>
-                  <div className="meta">EventClass from classify · not headline tone</div>
-                </section>
-              ) : null}
-              {data?.marks ? (
-                <section>
-                  <h2>Last marks</h2>
-                  <div className="metric metric-sm">
-                    {[
-                      data.marks.BTC !== undefined ? `BTC ${data.marks.BTC.toLocaleString()}` : null,
-                      data.marks.ETH !== undefined ? `ETH ${data.marks.ETH.toLocaleString()}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+                  <div className="meta">CoinMarketCap index · not fusion</div>
+                </>
+              ) : (
+                <>
+                  <div className="metric">n/a</div>
+                  <div className="meta">CoinMarketCap index · unavailable</div>
+                </>
+              )}
+            </article>
+            <article className="card">
+              <h2>News mix</h2>
+              {!data ? (
+                <Spinner label="Loading news mix" />
+              ) : (
+                <>
+                  <div className="metric">{data.mix.score === null ? "mix n/a" : data.mixLabel}</div>
+                  {mixTotal > 0 ? (
+                    <div className="mix-bar" aria-hidden="true">
+                      <span className="bull" style={{ width: `${(data.mix.bull / mixTotal) * 100}%` }} />
+                      <span className="bear" style={{ width: `${(data.mix.bear / mixTotal) * 100}%` }} />
+                      <span className="neutral" style={{ width: `${(data.mix.neutral / mixTotal) * 100}%` }} />
+                    </div>
+                  ) : null}
+                  <div className="mix-legend">
+                    <span>
+                      <b>{data.mix.bull}</b> bull
+                    </span>
+                    <span>
+                      <b>{data.mix.bear}</b> bear
+                    </span>
+                    <span>
+                      <b>{data.mix.neutral}</b> neutral
+                    </span>
                   </div>
-                  <div className="meta">from price_marks · not a live tape</div>
-                </section>
-              ) : null}
+                </>
+              )}
+            </article>
+            <article className="card">
+              <h2>Calls</h2>
+              {!data ? (
+                <Spinner label="Loading calls" />
+              ) : callTotal === 0 ? (
+                <>
+                  <div className="metric">none</div>
+                  <div className="meta">Last: none</div>
+                </>
+              ) : (
+                <>
+                  <div className="stat-row">
+                    <div className="stat">
+                      <span>FLASH</span>
+                      <strong>{data.calls.FLASH}</strong>
+                    </div>
+                    <div className="stat">
+                      <span>FADE</span>
+                      <strong>{data.calls.FADE}</strong>
+                    </div>
+                    <div className="stat">
+                      <span>CONFIRM</span>
+                      <strong>{data.calls.CONFIRM}</strong>
+                    </div>
+                    <div className="stat">
+                      <span>INVALIDATE</span>
+                      <strong>{data.calls.INVALIDATE}</strong>
+                    </div>
+                  </div>
+                  <div className="meta">
+                    {data.lastCall
+                      ? `Last: ${data.lastCall.kind} ${data.lastCall.asset} · ${data.lastCall.why} · ${data.lastCall.realizedText}`
+                      : "Last: none"}
+                  </div>
+                </>
+              )}
             </article>
           </section>
 

@@ -17,9 +17,11 @@ import {
   type DigestLastCall,
   type DigestMix,
 } from "./digest.js";
+import { loadCoingeckoSentiment, type OverviewSentiment } from "./coingeckoSentiment.js";
+import { loadCmcFearGreed, type OverviewFearGreed } from "./cmcFearGreed.js";
 
 export const OVERVIEW_HEADLINE_LIMIT = 40;
-export const OVERVIEW_MEMPOOL_LIMIT = 8;
+export const OVERVIEW_MEMPOOL_LIMIT = 20;
 export const MEMPOOL_SOURCE_ID = "mempool";
 
 export type OverviewToneTab = "ALL" | HeadlineTone;
@@ -73,6 +75,8 @@ export type OverviewReport = {
   headlines: OverviewHeadline[];
   classified: OverviewClassCount[] | null;
   marks: OverviewMarks | null;
+  sentiment: OverviewSentiment | null;
+  fearGreed: OverviewFearGreed | null;
 };
 
 export function safeHref(url: string): string | null {
@@ -159,6 +163,8 @@ export function buildOverviewReport(input: {
   settings?: DeskSettings;
   classified?: OverviewClassCount[] | null;
   marks?: OverviewMarks | null;
+  sentiment?: OverviewSentiment | null;
+  fearGreed?: OverviewFearGreed | null;
 }): OverviewReport {
   const settings = input.settings ?? DEFAULT_DESK_SETTINGS;
   const mix = scoreNewsMix(
@@ -175,6 +181,8 @@ export function buildOverviewReport(input: {
     headlines: capHeadlines(input.items, 500).map((item) => toHeadline(item, settings)),
     classified: input.classified && input.classified.length > 0 ? input.classified : null,
     marks: input.marks && (input.marks.BTC !== undefined || input.marks.ETH !== undefined) ? input.marks : null,
+    sentiment: input.sentiment ?? null,
+    fearGreed: input.fearGreed ?? null,
   };
 }
 
@@ -285,13 +293,15 @@ export async function buildOverview(
 ): Promise<OverviewReport> {
   const from = digestWindowStart(now);
   const resolved = settings ?? (await loadDeskSettings(pool).catch(() => DEFAULT_DESK_SETTINGS));
-  const [alerts, items, classified, marks] = await Promise.all([
+  const [alerts, items, classified, marks, sentiment, fearGreed] = await Promise.all([
     loadOverviewAlerts(pool, from),
     loadOverviewItems(pool, from),
     loadClassified(pool, from),
     loadMarks(pool),
+    loadCoingeckoSentiment({ now }),
+    loadCmcFearGreed({ now }),
   ]);
-  return buildOverviewReport({ now, alerts, items, settings: resolved, classified, marks });
+  return buildOverviewReport({ now, alerts, items, settings: resolved, classified, marks, sentiment, fearGreed });
 }
 
 export function serializeOverview(report: OverviewReport) {
@@ -305,5 +315,7 @@ export function serializeOverview(report: OverviewReport) {
     headlines: report.headlines,
     classified: report.classified,
     marks: report.marks,
+    sentiment: report.sentiment,
+    fearGreed: report.fearGreed,
   };
 }
