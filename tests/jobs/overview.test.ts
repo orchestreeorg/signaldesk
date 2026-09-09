@@ -8,6 +8,7 @@ import {
   buildOverviewReport,
   filterHeadlinesByTone,
   parseBtcFromTitle,
+  OVERVIEW_MEMPOOL_LIMIT,
   pickLargeBtc,
   safeHref,
   type OverviewItemRow,
@@ -62,6 +63,7 @@ describe("overview mix", () => {
     expect(report.lastCall).toBeNull();
     expect(report.mix.score).toBeNull();
     expect(report.mixLabel).toBe("n/a");
+    expect(report.sentiment).toBeNull();
   });
 });
 
@@ -73,6 +75,22 @@ describe("overview mempool and tabs", () => {
     expect(report.largeBtc[0]?.title).toContain("1,240 BTC");
     expect(report.largeBtc[0]?.btc).toBe(1240);
     expect(pickLargeBtc(mixItems).every((row) => row.sourceId === "mempool")).toBe(true);
+  });
+
+  it("caps large BTC candles at 20 newest mempool prints", () => {
+    const prints = Array.from({ length: 25 }, (_, index) =>
+      item({
+        title: `Large BTC transfer: ${1000 + index} BTC`,
+        sourceId: "mempool",
+        url: `https://mempool.space/tx/${index.toString().padStart(64, "0")}`,
+        publishedAt: new Date(now.getTime() - index * 60_000),
+      }),
+    );
+    const picked = pickLargeBtc(prints);
+    expect(OVERVIEW_MEMPOOL_LIMIT).toBe(20);
+    expect(picked).toHaveLength(20);
+    expect(picked[0]?.title).toContain("1000 BTC");
+    expect(picked[19]?.title).toContain("1019 BTC");
   });
 
   it("parses mempool BTC amounts from titles", () => {
@@ -105,6 +123,44 @@ describe("overview mempool and tabs", () => {
     });
     expect(report.lastCall).toMatchObject({ kind: "FLASH", realizedText: "-1.2%" });
   });
+
+  it("passes CoinGecko sentiment through without using it as tape", () => {
+    const report = buildOverviewReport({
+      now,
+      alerts: [],
+      items: mixItems,
+      sentiment: {
+        source: "coingecko",
+        asset: "BTC",
+        up: 84,
+        down: 16,
+        score: 0.68,
+        label: "+0.68",
+        asOf: now.toISOString(),
+      },
+    });
+    expect(report.sentiment?.source).toBe("coingecko");
+    expect(report.sentiment?.label).toBe("+0.68");
+    expect(report.fearGreed).toBeNull();
+  });
+
+  it("passes CoinMarketCap fear and greed through without using it as tape", () => {
+    const report = buildOverviewReport({
+      now,
+      alerts: [],
+      items: mixItems,
+      fearGreed: {
+        source: "coinmarketcap",
+        value: 74,
+        classification: "Greed",
+        greed: 74,
+        fear: 26,
+        asOf: now.toISOString(),
+      },
+    });
+    expect(report.fearGreed?.source).toBe("coinmarketcap");
+    expect(report.fearGreed?.classification).toBe("Greed");
+  });
 });
 
 describe("overview links", () => {
@@ -118,11 +174,17 @@ describe("overview links", () => {
 describe("overview isolation", () => {
   it("does not send Telegram", () => {
     const src = readFileSync(join(here, "../../src/jobs/overview.ts"), "utf8");
+    const sentiment = readFileSync(join(here, "../../src/jobs/coingeckoSentiment.ts"), "utf8");
+    const fearGreed = readFileSync(join(here, "../../src/jobs/cmcFearGreed.ts"), "utf8");
     const route = readFileSync(join(here, "../../dashboard/app/api/overview/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/page.tsx"), "utf8");
+    const fuse = readFileSync(join(here, "../../src/fusion/fuse.ts"), "utf8");
     expect(src).not.toMatch(/sendAlert|sendDigest|grammy/i);
+    expect(sentiment).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
+    expect(fearGreed).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
     expect(route).not.toMatch(/grammy|sendAlert|sendDigest/i);
     expect(page).not.toMatch(/dangerouslySetInnerHTML/);
+    expect(fuse).not.toMatch(/coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed/i);
   });
 
   it("keeps console controls on /console", () => {

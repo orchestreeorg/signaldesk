@@ -55,24 +55,24 @@ a { color: inherit; }
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  min-width: 180px;
 }
-.brand-mark {
-  display: grid;
-  place-items: center;
+.brand-logo {
+  display: block;
   width: 32px;
   height: 32px;
-  border-radius: 9px;
-  background: linear-gradient(180deg, #1d2a3d, #121820);
-  border: 1px solid var(--line-strong);
-  color: var(--wait);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
-.brand-copy { display: grid; line-height: 1.15; }
-.brand-copy strong { font-size: 13px; font-weight: 600; letter-spacing: -0.02em; }
-.brand-copy span { color: var(--muted); font-size: 11px; }
+.brand-name {
+  font-family: Outfit, "IBM Plex Sans", sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: var(--text);
+}
+.brand:hover .brand-logo {
+  filter: brightness(1.1);
+}
 
 .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .nav {
@@ -119,7 +119,7 @@ a { color: inherit; }
   padding: 20px 8px;
 }
 .spinner-wrap.tall { min-height: 240px; }
-.overview-combined .spinner-wrap { min-height: 56px; padding: 8px; }
+.overview-metrics .spinner-wrap { min-height: 72px; padding: 8px; }
 .spinner {
   width: 22px;
   height: 22px;
@@ -141,26 +141,21 @@ h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.04em; font-weight: 600
 .sub { margin: 0; color: var(--muted); font-size: 13px; max-width: 62ch; }
 
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-.overview-split {
+.overview-metrics {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
   align-items: stretch;
 }
 .overview-headlines { margin-bottom: 8px; }
-.large-btc-card { display: flex; flex-direction: column; min-height: 100%; }
+.large-btc-card { display: flex; flex-direction: column; margin-bottom: 16px; }
 .large-btc-card .metric { margin-bottom: 2px; }
-.overview-combined { display: flex; flex-direction: column; gap: 0; }
-.overview-combined > section { padding: 14px 0; border-top: 1px solid var(--line); }
-.overview-combined > section:first-child { padding-top: 0; border-top: 0; }
-.overview-combined > section:last-child { padding-bottom: 0; }
-.overview-combined > section h2 { margin-bottom: 10px; }
-.metric-sm { font-size: 20px !important; }
+.overview-metrics .stat-row { grid-template-columns: repeat(2, 1fr); }
 .btc-chart {
   display: flex;
   align-items: stretch;
-  gap: 8px;
+  gap: 4px;
   min-height: 240px;
   height: 260px;
   margin-top: 16px;
@@ -397,10 +392,13 @@ table.params th {
 table.params td { padding: 8px 10px; border-bottom: 1px solid var(--line); }
 table.params input, table.params select { width: 100%; }
 
+@media (max-width: 1100px) {
+  .overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 900px) {
   .appbar, .shell { padding-left: 16px; padding-right: 16px; }
   .appbar { flex-direction: column; align-items: stretch; }
   .top-actions { justify-content: space-between; }
-  .grid, .overview-split, .split, .stat-row { grid-template-columns: 1fr; }
+  .grid, .overview-metrics, .split, .stat-row { grid-template-columns: 1fr; }
   .news-row, .row { grid-template-columns: 1fr; gap: 4px; }
 }
