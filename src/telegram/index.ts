@@ -1,10 +1,11 @@
 export { createTelegramBot, startTelegram } from "./bot.js";
 export { handleCommand } from "./commands.js";
-export { renderAlert, renderHeadline } from "./html.js";
+export { renderAlert, renderDigest, renderHeadline } from "./html.js";
 export {
   createApiTransport,
   createLogTransport,
   sendAlert,
+  sendDigest,
   sendHeadline,
   sendHeadlines,
   type HeadlineSendResult,

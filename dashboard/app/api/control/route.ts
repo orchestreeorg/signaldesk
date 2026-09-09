@@ -6,7 +6,15 @@ import { OPS_CONTROL_CHANNEL, type OpsControlAction } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const ACTIONS = new Set<OpsControlAction>(["start", "stop", "pause", "resume", "run-news", "run-tape"]);
+const ACTIONS = new Set<OpsControlAction>([
+  "start",
+  "stop",
+  "pause",
+  "resume",
+  "run-news",
+  "run-tape",
+  "run-digest",
+]);
 
 export async function POST(request: NextRequest) {
   const secret = dashSecret();

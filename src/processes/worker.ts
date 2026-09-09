@@ -18,9 +18,10 @@ import { loadConfig } from "../config.js";
 import { insertAlert } from "../db/alerts.js";
 import { createDb, createPool } from "../db/client.js";
 import { upsertEvent } from "../db/events.js";
+import { buildDigest } from "../jobs/digest.js";
 import { quietSnapshot, runNewsDesk } from "../jobs/newsDesk.js";
 import { fillOutcomes } from "../jobs/outcomes.js";
-import { dummyAlert, registerSchedules } from "../jobs/schedule.js";
+import { registerSchedules } from "../jobs/schedule.js";
 import { formatWait, nextDigestAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
 import { Policy } from "../policy/index.js";
 import {
@@ -34,7 +35,7 @@ import {
   ChatStore,
   createApiTransport,
   createLogTransport,
-  sendAlert,
+  sendDigest,
   sendHeadlines,
 } from "../telegram/index.js";
 
@@ -221,14 +222,43 @@ export async function startWorker(): Promise<{
         ops("digest", "skip", "No TELEGRAM_CHAT_ID; DIGEST not sent", { level: "skip" });
         return;
       }
-      const send = await sendAlert(store, transport, {
-        chatId,
-        alert: dummyAlert("DIGEST"),
-        dryRun: config.TELEGRAM_DRY_RUN,
-      });
-      ops("digest", "emit", send.sent ? "DIGEST sent" : `DIGEST ${send.reason}`, {
-        level: send.sent || send.reason === "dry-run" ? "ok" : "skip",
-      });
+      const pool = createPool(config.DATABASE_URL);
+      try {
+        const settings = await loadDeskSettings(pool);
+        try {
+          await fillOutcomes(createDb(pool), (sql, params) => pool.query(sql, params));
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          ops("digest", "outcomes.skip", `Outcomes not filled: ${message}`, {
+            level: "skip",
+            data: { reason: message },
+          });
+        }
+        const now = new Date();
+        const snapshot = liveTape ? await liveTape.runtime.snapshotFor("BTC", now) : null;
+        const report = await buildDigest(pool, now, settings, snapshot);
+        const send = await sendDigest(store, transport, {
+          chatId,
+          report,
+          dryRun: config.TELEGRAM_DRY_RUN,
+        });
+        ops("digest", "emit", send.sent ? "DIGEST sent" : `DIGEST ${send.reason}`, {
+          level: send.sent || send.reason === "dry-run" ? "ok" : "skip",
+          data: {
+            flash: report.calls.FLASH,
+            fade: report.calls.FADE,
+            confirm: report.calls.CONFIRM,
+            invalidate: report.calls.INVALIDATE,
+            mix: report.mix.score,
+            bull: report.mix.bull,
+            bear: report.mix.bear,
+            neutral: report.mix.neutral,
+            dryRun: config.TELEGRAM_DRY_RUN,
+          },
+        });
+      } finally {
+        await pool.end();
+      }
       ops("digest", "wait", `Next DIGEST ${formatWait(nextDigestAt())}`, { level: "wait" });
     }, jobOpts),
   ];
@@ -251,6 +281,9 @@ export async function startWorker(): Promise<{
     }
     if (command.action === "run-tape") {
       void queues.tape.add("tape-now", { kind: "tape" });
+    }
+    if (command.action === "run-digest") {
+      void queues.digest.add("digest-now", { kind: "digest" });
     }
     if (command.action === "stop") {
       void runtimeStop().finally(() => process.exit(0));
