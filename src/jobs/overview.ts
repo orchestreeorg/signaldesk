@@ -19,6 +19,10 @@ import {
 } from "./digest.js";
 import { loadCoingeckoSentiment, type OverviewSentiment } from "./coingeckoSentiment.js";
 import { loadCmcFearGreed, type OverviewFearGreed } from "./cmcFearGreed.js";
+import { loadFredOvx, type OverviewOvx } from "./fredOvx.js";
+import { loadGprDaily, type OverviewGpr } from "./gprDaily.js";
+import { loadGoldPrice, type OverviewGold } from "./goldPrice.js";
+import { loadFredSp500, type OverviewSp500 } from "./fredSp500.js";
 
 export const OVERVIEW_HEADLINE_LIMIT = 40;
 export const OVERVIEW_MEMPOOL_LIMIT = 20;
@@ -77,6 +81,10 @@ export type OverviewReport = {
   marks: OverviewMarks | null;
   sentiment: OverviewSentiment | null;
   fearGreed: OverviewFearGreed | null;
+  ovx: OverviewOvx | null;
+  gpr: OverviewGpr | null;
+  gold: OverviewGold | null;
+  sp500: OverviewSp500 | null;
 };
 
 export function safeHref(url: string): string | null {
@@ -165,6 +173,10 @@ export function buildOverviewReport(input: {
   marks?: OverviewMarks | null;
   sentiment?: OverviewSentiment | null;
   fearGreed?: OverviewFearGreed | null;
+  ovx?: OverviewOvx | null;
+  gpr?: OverviewGpr | null;
+  gold?: OverviewGold | null;
+  sp500?: OverviewSp500 | null;
 }): OverviewReport {
   const settings = input.settings ?? DEFAULT_DESK_SETTINGS;
   const mix = scoreNewsMix(
@@ -183,6 +195,10 @@ export function buildOverviewReport(input: {
     marks: input.marks && (input.marks.BTC !== undefined || input.marks.ETH !== undefined) ? input.marks : null,
     sentiment: input.sentiment ?? null,
     fearGreed: input.fearGreed ?? null,
+    ovx: input.ovx ?? null,
+    gpr: input.gpr ?? null,
+    gold: input.gold ?? null,
+    sp500: input.sp500 ?? null,
   };
 }
 
@@ -293,15 +309,32 @@ export async function buildOverview(
 ): Promise<OverviewReport> {
   const from = digestWindowStart(now);
   const resolved = settings ?? (await loadDeskSettings(pool).catch(() => DEFAULT_DESK_SETTINGS));
-  const [alerts, items, classified, marks, sentiment, fearGreed] = await Promise.all([
+  const [alerts, items, classified, marks, sentiment, fearGreed, ovx, gpr, gold, sp500] = await Promise.all([
     loadOverviewAlerts(pool, from),
     loadOverviewItems(pool, from),
     loadClassified(pool, from),
     loadMarks(pool),
     loadCoingeckoSentiment({ now }),
     loadCmcFearGreed({ now }),
+    loadFredOvx({ now }),
+    loadGprDaily({ now }),
+    loadGoldPrice({ now }),
+    loadFredSp500({ now }),
   ]);
-  return buildOverviewReport({ now, alerts, items, settings: resolved, classified, marks, sentiment, fearGreed });
+  return buildOverviewReport({
+    now,
+    alerts,
+    items,
+    settings: resolved,
+    classified,
+    marks,
+    sentiment,
+    fearGreed,
+    ovx,
+    gpr,
+    gold,
+    sp500,
+  });
 }
 
 export function serializeOverview(report: OverviewReport) {
@@ -317,5 +350,9 @@ export function serializeOverview(report: OverviewReport) {
     marks: report.marks,
     sentiment: report.sentiment,
     fearGreed: report.fearGreed,
+    ovx: report.ovx,
+    gpr: report.gpr,
+    gold: report.gold,
+    sp500: report.sp500,
   };
 }

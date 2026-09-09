@@ -142,6 +142,10 @@ describe("overview mempool and tabs", () => {
     expect(report.sentiment?.source).toBe("coingecko");
     expect(report.sentiment?.label).toBe("+0.68");
     expect(report.fearGreed).toBeNull();
+    expect(report.ovx).toBeNull();
+    expect(report.gpr).toBeNull();
+    expect(report.gold).toBeNull();
+    expect(report.sp500).toBeNull();
   });
 
   it("passes CoinMarketCap fear and greed through without using it as tape", () => {
@@ -161,6 +165,69 @@ describe("overview mempool and tabs", () => {
     expect(report.fearGreed?.source).toBe("coinmarketcap");
     expect(report.fearGreed?.classification).toBe("Greed");
   });
+
+  it("passes FRED OVX through without using it as tape", () => {
+    const report = buildOverviewReport({
+      now,
+      alerts: [],
+      items: mixItems,
+      ovx: {
+        source: "fred",
+        seriesId: "OVXCLS",
+        value: 32.14,
+        classification: "Normal",
+        stress: 40.175,
+        calm: 59.825,
+        asOf: now.toISOString(),
+      },
+    });
+    expect(report.ovx?.source).toBe("fred");
+    expect(report.ovx?.classification).toBe("Normal");
+  });
+
+  it("passes daily GPR through without using it as tape", () => {
+    const report = buildOverviewReport({
+      now,
+      alerts: [],
+      items: mixItems,
+      gpr: {
+        source: "iacoviello",
+        value: 83.65,
+        classification: "Normal",
+        stress: 33.46,
+        calm: 66.54,
+        asOf: now.toISOString(),
+      },
+    });
+    expect(report.gpr?.source).toBe("iacoviello");
+    expect(report.gpr?.value).toBe(83.65);
+  });
+
+  it("passes gold and S&P 500 through without using them as tape", () => {
+    const report = buildOverviewReport({
+      now,
+      alerts: [],
+      items: mixItems,
+      gold: {
+        source: "yahoo",
+        symbol: "GC=F",
+        value: 4435.2,
+        changePct: 0.94,
+        asOf: now.toISOString(),
+      },
+      sp500: {
+        source: "fred",
+        seriesId: "SP500",
+        value: 6500.25,
+        changePct: 0.78,
+        asOf: now.toISOString(),
+      },
+    });
+    expect(report.gold?.source).toBe("yahoo");
+    expect(report.sp500?.source).toBe("fred");
+    expect(report.gold?.value).toBe(4435.2);
+    expect(report.sp500?.changePct).toBe(0.78);
+  });
 });
 
 describe("overview links", () => {
@@ -176,15 +243,25 @@ describe("overview isolation", () => {
     const src = readFileSync(join(here, "../../src/jobs/overview.ts"), "utf8");
     const sentiment = readFileSync(join(here, "../../src/jobs/coingeckoSentiment.ts"), "utf8");
     const fearGreed = readFileSync(join(here, "../../src/jobs/cmcFearGreed.ts"), "utf8");
+    const ovx = readFileSync(join(here, "../../src/jobs/fredOvx.ts"), "utf8");
+    const gpr = readFileSync(join(here, "../../src/jobs/gprDaily.ts"), "utf8");
+    const gold = readFileSync(join(here, "../../src/jobs/goldPrice.ts"), "utf8");
+    const sp500 = readFileSync(join(here, "../../src/jobs/fredSp500.ts"), "utf8");
     const route = readFileSync(join(here, "../../dashboard/app/api/overview/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/page.tsx"), "utf8");
     const fuse = readFileSync(join(here, "../../src/fusion/fuse.ts"), "utf8");
     expect(src).not.toMatch(/sendAlert|sendDigest|grammy/i);
     expect(sentiment).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
     expect(fearGreed).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
+    expect(ovx).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
+    expect(gpr).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
+    expect(gold).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
+    expect(sp500).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
     expect(route).not.toMatch(/grammy|sendAlert|sendDigest/i);
     expect(page).not.toMatch(/dangerouslySetInnerHTML/);
-    expect(fuse).not.toMatch(/coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed/i);
+    expect(fuse).not.toMatch(
+      /coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed|loadFredOvx|OVXCLS|loadGprDaily|loadGoldPrice|loadFredSp500|GPRD|GC=F/i,
+    );
   });
 
   it("keeps console controls on /console", () => {

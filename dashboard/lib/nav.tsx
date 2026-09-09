@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BrandLogo } from "./logo";
+import { ThemeMenu } from "./theme-picker";
 
 export function StatusChip(props: { online: boolean; paused?: boolean; label: string }) {
   const state = props.online ? (props.paused ? "pause" : "on") : "off";
@@ -28,6 +29,7 @@ export function DeskNav(props: {
         {link("/parameters", "parameters", "Parameters")}
       </nav>
       {props.extra}
+      <ThemeMenu />
     </div>
   );
 }

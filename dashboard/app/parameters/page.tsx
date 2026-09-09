@@ -191,7 +191,7 @@ export default function ParametersPage() {
     <AppShell
       current="parameters"
       title="Parameters"
-      subtitle="Sources, headline tone, and FLASH/FADE gates. Secrets stay in .env. This is not a trading UI."
+      subtitle="Sources, headline tone, FLASH/FADE gates. Secrets stay in .env."
     >
       <section className="card stack">
         <h2>News sources</h2>

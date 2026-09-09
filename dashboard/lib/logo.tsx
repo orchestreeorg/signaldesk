@@ -2,7 +2,7 @@ export function BrandLogo() {
   return (
     <>
       <svg className="brand-logo" viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="8" fill="#151c25" />
+        <rect width="32" height="32" rx="6" fill="#0b0d11" />
         <path
           d="M6.5 19h3.2l3.1-8.2 2.8 12.4L20 8.5l3.4 10.5H26"
           fill="none"
