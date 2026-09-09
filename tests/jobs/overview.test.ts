@@ -7,6 +7,7 @@ import type { DigestAlertRow } from "../../src/jobs/digest.js";
 import {
   buildOverviewReport,
   filterHeadlinesByTone,
+  parseBtcFromTitle,
   pickLargeBtc,
   safeHref,
   type OverviewItemRow,
@@ -70,16 +71,30 @@ describe("overview mempool and tabs", () => {
     expect(report.largeBtc).toHaveLength(1);
     expect(report.largeBtc[0]?.sourceId).toBe("mempool");
     expect(report.largeBtc[0]?.title).toContain("1,240 BTC");
+    expect(report.largeBtc[0]?.btc).toBe(1240);
     expect(pickLargeBtc(mixItems).every((row) => row.sourceId === "mempool")).toBe(true);
+  });
+
+  it("parses mempool BTC amounts from titles", () => {
+    expect(parseBtcFromTitle("Large BTC transfer: 1,240 BTC")).toBe(1240);
+    expect(parseBtcFromTitle("Large BTC transfer: 2,441.4 BTC")).toBe(2441.4);
+    expect(parseBtcFromTitle("What bitcoin did this week")).toBeNull();
+  });
+
+  it("keeps mempool prints off the Headlines list", () => {
+    const report = buildOverviewReport({ now, alerts: [], items: mixItems });
+    expect(report.headlines.every((row) => row.sourceId !== "mempool")).toBe(true);
+    expect(report.headlines).toHaveLength(5);
+    expect(report.largeBtc).toHaveLength(1);
   });
 
   it("filters headline tabs by tone", () => {
     const report = buildOverviewReport({ now, alerts: [], items: mixItems });
-    expect(filterHeadlinesByTone(report.headlines, "ALL")).toHaveLength(6);
+    expect(filterHeadlinesByTone(report.headlines, "ALL")).toHaveLength(5);
     expect(filterHeadlinesByTone(report.headlines, "BULLISH").every((row) => row.tone === "BULLISH")).toBe(true);
     expect(filterHeadlinesByTone(report.headlines, "BULLISH")).toHaveLength(2);
     expect(filterHeadlinesByTone(report.headlines, "BEARISH")).toHaveLength(1);
-    expect(filterHeadlinesByTone(report.headlines, "NEUTRAL")).toHaveLength(3);
+    expect(filterHeadlinesByTone(report.headlines, "NEUTRAL")).toHaveLength(2);
   });
 
   it("keeps last FLASH realized text without inventing prices", () => {

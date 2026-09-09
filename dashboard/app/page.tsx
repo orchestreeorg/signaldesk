@@ -17,6 +17,8 @@ type Headline = {
   tone: Tone;
 };
 
+type LargeBtc = Headline & { btc: number | null };
+
 type OverviewPayload = {
   now: string;
   mix: { bull: number; bear: number; neutral: number; score: number | null };
@@ -28,7 +30,7 @@ type OverviewPayload = {
     why: string;
     realizedText: string;
   } | null;
-  largeBtc: Headline[];
+  largeBtc: LargeBtc[];
   headlines: Headline[];
   classified: { class: string; n: number }[] | null;
   marks: { BTC?: number; ETH?: number } | null;
@@ -122,110 +124,124 @@ export default function OverviewPage() {
         <p className="note">{notice}</p>
       ) : (
         <>
-          <section className="overview-grid">
-            <article className="card">
-              <h2>News mix</h2>
-              <div className="metric">{data ? (data.mix.score === null ? "mix n/a" : data.mixLabel) : "…"}</div>
-              {data && mixTotal > 0 ? (
-                <div className="mix-bar" aria-hidden="true">
-                  <span className="bull" style={{ width: `${(data.mix.bull / mixTotal) * 100}%` }} />
-                  <span className="bear" style={{ width: `${(data.mix.bear / mixTotal) * 100}%` }} />
-                  <span className="neutral" style={{ width: `${(data.mix.neutral / mixTotal) * 100}%` }} />
-                </div>
-              ) : null}
-              <div className="mix-legend">
-                {data ? (
+          <section className="overview-split">
+            <article className="card large-btc-card">
+              <h2>Large BTC</h2>
+              {!data ? (
+                <Spinner label="Loading large BTC" tall />
+              ) : data.largeBtc.length ? (
+                <>
+                  <div className="metric">{formatBtc(data.largeBtc.reduce((sum, row) => sum + (row.btc ?? 0), 0))}</div>
+                  <div className="meta">{data.largeBtc.length} mempool prints · last 24h</div>
+                  <BtcBars rows={data.largeBtc} />
+                </>
+              ) : (
+                <p className="empty-inline">No large BTC prints</p>
+              )}
+            </article>
+
+            <article className="card overview-combined">
+              <section>
+                <h2>News mix</h2>
+                {!data ? (
+                  <Spinner label="Loading news mix" />
+                ) : (
                   <>
-                    <span>
-                      <b>{data.mix.bull}</b> bull
-                    </span>
-                    <span>
-                      <b>{data.mix.bear}</b> bear
-                    </span>
-                    <span>
-                      <b>{data.mix.neutral}</b> neutral
-                    </span>
+                    <div className="metric">{data.mix.score === null ? "mix n/a" : data.mixLabel}</div>
+                    {mixTotal > 0 ? (
+                      <div className="mix-bar" aria-hidden="true">
+                        <span className="bull" style={{ width: `${(data.mix.bull / mixTotal) * 100}%` }} />
+                        <span className="bear" style={{ width: `${(data.mix.bear / mixTotal) * 100}%` }} />
+                        <span className="neutral" style={{ width: `${(data.mix.neutral / mixTotal) * 100}%` }} />
+                      </div>
+                    ) : null}
+                    <div className="mix-legend">
+                      <span>
+                        <b>{data.mix.bull}</b> bull
+                      </span>
+                      <span>
+                        <b>{data.mix.bear}</b> bear
+                      </span>
+                      <span>
+                        <b>{data.mix.neutral}</b> neutral
+                      </span>
+                    </div>
+                  </>
+                )}
+              </section>
+              <section>
+                <h2>Calls</h2>
+                {!data ? (
+                  <Spinner label="Loading calls" />
+                ) : callTotal === 0 ? (
+                  <>
+                    <div className="metric">none</div>
+                    <div className="meta">Last: none</div>
                   </>
                 ) : (
-                  <span>loading</span>
+                  <>
+                    <div className="stat-row">
+                      <div className="stat">
+                        <span>FLASH</span>
+                        <strong>{data.calls.FLASH}</strong>
+                      </div>
+                      <div className="stat">
+                        <span>FADE</span>
+                        <strong>{data.calls.FADE}</strong>
+                      </div>
+                      <div className="stat">
+                        <span>CONFIRM</span>
+                        <strong>{data.calls.CONFIRM}</strong>
+                      </div>
+                      <div className="stat">
+                        <span>INVALIDATE</span>
+                        <strong>{data.calls.INVALIDATE}</strong>
+                      </div>
+                    </div>
+                    <div className="meta">
+                      {data.lastCall
+                        ? `Last: ${data.lastCall.kind} ${data.lastCall.asset} · ${data.lastCall.why} · ${data.lastCall.realizedText}`
+                        : "Last: none"}
+                    </div>
+                  </>
                 )}
-              </div>
+              </section>
+              {!data ? (
+                <section>
+                  <h2>Classified</h2>
+                  <Spinner label="Loading classified" />
+                </section>
+              ) : data.classified ? (
+                <section>
+                  <h2>Classified</h2>
+                  <div className="mix-legend">
+                    {data.classified.map((row) => (
+                      <span key={row.class}>
+                        <b>{row.n}</b> {row.class}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="meta">EventClass from classify · not headline tone</div>
+                </section>
+              ) : null}
+              {data?.marks ? (
+                <section>
+                  <h2>Last marks</h2>
+                  <div className="metric metric-sm">
+                    {[
+                      data.marks.BTC !== undefined ? `BTC ${data.marks.BTC.toLocaleString()}` : null,
+                      data.marks.ETH !== undefined ? `ETH ${data.marks.ETH.toLocaleString()}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                  <div className="meta">from price_marks · not a live tape</div>
+                </section>
+              ) : null}
             </article>
-            <article className="card">
-              <h2>Calls</h2>
-              {!data || callTotal === 0 ? (
-                <div className="metric">none</div>
-              ) : (
-                <div className="stat-row">
-                  <div className="stat">
-                    <span>FLASH</span>
-                    <strong>{data.calls.FLASH}</strong>
-                  </div>
-                  <div className="stat">
-                    <span>FADE</span>
-                    <strong>{data.calls.FADE}</strong>
-                  </div>
-                  <div className="stat">
-                    <span>CONFIRM</span>
-                    <strong>{data.calls.CONFIRM}</strong>
-                  </div>
-                  <div className="stat">
-                    <span>INVALIDATE</span>
-                    <strong>{data.calls.INVALIDATE}</strong>
-                  </div>
-                </div>
-              )}
-              <div className="meta">
-                {data?.lastCall
-                  ? `Last: ${data.lastCall.kind} ${data.lastCall.asset} · ${data.lastCall.why} · ${data.lastCall.realizedText}`
-                  : "Last: none"}
-              </div>
-            </article>
-            {data?.marks ? (
-              <article className="card">
-                <h2>Last marks</h2>
-                <div className="metric">
-                  {[
-                    data.marks.BTC !== undefined ? `BTC ${data.marks.BTC.toLocaleString()}` : null,
-                    data.marks.ETH !== undefined ? `ETH ${data.marks.ETH.toLocaleString()}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </div>
-                <div className="meta">from price_marks · not a live tape</div>
-              </article>
-            ) : null}
-            {data?.classified ? (
-              <article className="card">
-                <h2>Classified</h2>
-                <div className="mix-legend">
-                  {data.classified.map((row) => (
-                    <span key={row.class}>
-                      <b>{row.n}</b> {row.class}
-                    </span>
-                  ))}
-                </div>
-                <div className="meta">EventClass from classify · not headline tone</div>
-              </article>
-            ) : null}
           </section>
 
-          <section className="card stack">
-            <h2>Large BTC</h2>
-            {data?.largeBtc.length ? (
-              <ul className="news-list">
-                {data.largeBtc.map((row) => (
-                  <li key={row.url}>
-                    <HeadlineRow row={row} hideTone />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="empty-inline">No large BTC prints</p>
-            )}
-          </section>
-
-          <section className="card stack">
+          <section className="card stack overview-headlines">
             <h2>Headlines</h2>
             <div className="tabs">
               {TABS.map((name) => (
@@ -235,7 +251,11 @@ export default function OverviewPage() {
               ))}
             </div>
             {headlines.length === 0 ? (
-              <p className="empty-inline">No headlines</p>
+              !data ? (
+                <Spinner label="Loading headlines" tall />
+              ) : (
+                <p className="empty-inline">No headlines</p>
+              )
             ) : (
               <ul className="news-list">
                 {headlines.map((row) => (
@@ -253,7 +273,58 @@ export default function OverviewPage() {
   );
 }
 
-function HeadlineRow(props: { row: Headline; hideTone?: boolean }) {
+function Spinner(props: { label: string; tall?: boolean }) {
+  return (
+    <div className={props.tall ? "spinner-wrap tall" : "spinner-wrap"} role="status" aria-live="polite" aria-label={props.label}>
+      <span className="spinner" />
+    </div>
+  );
+}
+
+function formatBtc(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) {
+    return "—";
+  }
+  return `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })} BTC`;
+}
+
+function BtcBars(props: { rows: LargeBtc[] }) {
+  const chronological = [...props.rows].sort((a, b) => a.publishedAt.localeCompare(b.publishedAt));
+  const max = Math.max(1, ...chronological.map((row) => row.btc ?? 0));
+  return (
+    <div className="btc-chart" role="img" aria-label="Large BTC transfers by amount">
+      {chronological.map((row) => {
+        const btc = row.btc ?? 0;
+        const height = `${Math.max(8, (btc / max) * 100)}%`;
+        const label = formatBtc(btc);
+        const when = row.publishedAt.slice(11, 16);
+        const inner = (
+          <>
+            <span className="btc-amt">{btc > 0 ? btc.toLocaleString("en-US", { maximumFractionDigits: 1 }) : "—"}</span>
+            <span className="btc-track">
+              <span className="btc-bar" style={{ height }} />
+            </span>
+            <span className="btc-when">{when}</span>
+          </>
+        );
+        if (row.href) {
+          return (
+            <a key={row.url} className="btc-col" href={row.href} target="_blank" rel="noreferrer" title={`${label} at ${when} UTC`}>
+              {inner}
+            </a>
+          );
+        }
+        return (
+          <div key={row.url} className="btc-col" title={`${label} at ${when} UTC`}>
+            {inner}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function HeadlineRow(props: { row: Headline }) {
   const time = props.row.publishedAt.slice(11, 16);
   const title = props.row.href ? (
     <a href={props.row.href} target="_blank" rel="noreferrer">
@@ -264,7 +335,7 @@ function HeadlineRow(props: { row: Headline; hideTone?: boolean }) {
   );
   return (
     <div className="news-row">
-      {props.hideTone ? <span className="tone tone-NEUTRAL">MEMPOOL</span> : <span className={`tone tone-${props.row.tone}`}>{props.row.tone}</span>}
+      <span className={`tone tone-${props.row.tone}`}>{props.row.tone}</span>
       <span className="source-chip">{props.row.sourceId}</span>
       {title}
       <span className="ts">{time} UTC</span>
