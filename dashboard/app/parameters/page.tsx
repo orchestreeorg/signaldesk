@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { dashHeaders, writeDashSecret } from "@/lib/client-auth";
 
 type ToneMode = "loose" | "balanced" | "strict";
 type HeadlineSend = "all" | "skip_neutral" | "directional_only";
@@ -47,26 +48,37 @@ export default function ParametersPage() {
   const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [secretDraft, setSecretDraft] = useState("");
+
+  const load = async () => {
+    setNotice("");
+    try {
+      const response = await fetch("/api/parameters", { headers: dashHeaders() });
+      const json = (await response.json()) as { settings?: DeskSettings; sources?: SourceDraft[]; error?: string };
+      if (response.status === 401 || json.error === "unauthorized") {
+        setLocked(true);
+        setNotice("Enter DASH_SECRET (Vercel env) to unlock Parameters.");
+        return;
+      }
+      if (json.error) {
+        setNotice(json.error);
+        return;
+      }
+      setLocked(false);
+      if (json.settings) {
+        setSettings(json.settings);
+      }
+      if (json.sources) {
+        setSources(json.sources);
+      }
+    } catch (error: unknown) {
+      setNotice(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const response = await fetch("/api/parameters");
-        const json = (await response.json()) as { settings?: DeskSettings; sources?: SourceDraft[]; error?: string };
-        if (json.error) {
-          setNotice(json.error);
-          return;
-        }
-        if (json.settings) {
-          setSettings(json.settings);
-        }
-        if (json.sources) {
-          setSources(json.sources);
-        }
-      } catch (error: unknown) {
-        setNotice(error instanceof Error ? error.message : String(error));
-      }
-    })();
+    void load();
   }, []);
 
   useEffect(() => {
@@ -77,7 +89,7 @@ export default function ParametersPage() {
       void (async () => {
         const response = await fetch("/api/parameters/preview", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: dashHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ settings }),
         });
         const json = (await response.json()) as { preview?: PreviewRow[]; error?: string };
@@ -98,7 +110,7 @@ export default function ParametersPage() {
     try {
       const response = await fetch("/api/parameters", {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: dashHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ settings, sources }),
       });
       const json = (await response.json()) as { ok?: boolean; error?: string };
@@ -111,9 +123,46 @@ export default function ParametersPage() {
   const patch = (partial: Partial<DeskSettings>) =>
     setSettings((current) => (current ? { ...current, ...partial } : current));
 
-  if (!settings) {
+  if (locked || !settings) {
     return (
       <main className="shell">
+        <header className="top">
+          <div>
+            <h1>Parameters</h1>
+            <p className="sub">This page is gated by DASH_SECRET on Vercel.</p>
+          </div>
+          <a className="badge" href="/">← Console</a>
+        </header>
+        {locked ? (
+          <section className="card stack">
+            <label>
+              DASH_SECRET
+              <input
+                type="password"
+                value={secretDraft}
+                onChange={(event) => setSecretDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    writeDashSecret(secretDraft);
+                    void load();
+                  }
+                }}
+              />
+            </label>
+            <div className="controls">
+              <button
+                className="primary"
+                type="button"
+                onClick={() => {
+                  writeDashSecret(secretDraft);
+                  void load();
+                }}
+              >
+                Unlock
+              </button>
+            </div>
+          </section>
+        ) : null}
         <p className="note">{notice || "Loading parameters…"}</p>
       </main>
     );
