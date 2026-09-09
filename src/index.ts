@@ -23,6 +23,7 @@ export { Policy, type EmitResult } from "./policy/index.js";
 export { QUEUE_NAMES } from "./queue.js";
 export { fillOutcomes, resolveOutcomes } from "./jobs/outcomes.js";
 export { calibrate, priorLookupFromStudy, studyPriors } from "./jobs/calibrate.js";
+export { buildDigest, buildDigestReport } from "./jobs/digest.js";
 export { runNewsDesk } from "./jobs/newsDesk.js";
 export { DIGEST_CRON, NEWS_CRON, TAPE_CRON, registerSchedules } from "./jobs/schedule.js";
 export { runSmoke } from "./jobs/smoke.js";

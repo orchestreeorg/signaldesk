@@ -1,6 +1,7 @@
 import { Bot } from "grammy";
 import type { AlertKind } from "../domain/index.js";
-import { renderAlert, renderHeadline } from "./html.js";
+import { renderAlert, renderDigest, renderHeadline } from "./html.js";
+import type { DigestReport } from "../jobs/digest.js";
 import { ChatStore } from "./store.js";
 import { DEFAULT_DESK_SETTINGS } from "../desk/defaults.js";
 import type { DeskSettings } from "../desk/types.js";
@@ -62,6 +63,30 @@ export async function sendAlert(
   await transport.send(input.chatId, html);
   if (input.alert.kind === "FLASH") {
     store.recordFlash(input.chatId, now);
+  }
+  return { sent: true, html };
+}
+
+export async function sendDigest(
+  store: ChatStore,
+  transport: TelegramTransport,
+  input: {
+    chatId: string;
+    html?: string;
+    report?: DigestReport;
+    dryRun: boolean;
+    now?: Date;
+  },
+): Promise<SendResult> {
+  const html = input.html ?? (input.report ? renderDigest(input.report) : "");
+  const now = input.now ?? new Date();
+  const allowed = store.canSend(input.chatId, "DIGEST", now);
+  if (!allowed.ok) {
+    return { sent: false, html, reason: allowed.reason };
+  }
+  await transport.send(input.chatId, html);
+  if (input.dryRun) {
+    return { sent: false, html, reason: "dry-run" };
   }
   return { sent: true, html };
 }

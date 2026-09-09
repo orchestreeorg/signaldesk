@@ -14,7 +14,14 @@ export type OpsEvent = {
   data?: Record<string, unknown>;
 };
 
-export type OpsControlAction = "start" | "stop" | "pause" | "resume" | "run-news" | "run-tape";
+export type OpsControlAction =
+  | "start"
+  | "stop"
+  | "pause"
+  | "resume"
+  | "run-news"
+  | "run-tape"
+  | "run-digest";
 
 export type OpsHeartbeat = {
   ts: string;
