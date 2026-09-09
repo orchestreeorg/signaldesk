@@ -1,40 +1,81 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { dashHeaders } from "@/lib/client-auth";
-import type { OpsEvent, OpsHeartbeat } from "@/lib/types";
+import { AppShell, StatusChip } from "@/lib/nav";
+import type { OpsHeartbeat } from "@/lib/types";
 
-type Status = {
-  online: boolean;
-  heartbeat: OpsHeartbeat | null;
-  spawnable: boolean;
-  vercel: boolean;
+type Tone = "BULLISH" | "BEARISH" | "NEUTRAL";
+type ToneTab = "ALL" | Tone;
+
+type Headline = {
+  title: string;
+  url: string;
+  href: string | null;
+  sourceId: string;
+  publishedAt: string;
+  tone: Tone;
+};
+
+type OverviewPayload = {
+  now: string;
+  mix: { bull: number; bear: number; neutral: number; score: number | null };
+  mixLabel: string;
+  calls: { FLASH: number; FADE: number; CONFIRM: number; INVALIDATE: number };
+  lastCall: {
+    kind: "FLASH" | "FADE";
+    asset: string;
+    why: string;
+    realizedText: string;
+  } | null;
+  largeBtc: Headline[];
+  headlines: Headline[];
+  classified: { class: string; n: number }[] | null;
+  marks: { BTC?: number; ETH?: number } | null;
   error?: string;
 };
 
-export default function Page() {
+type Status = {
+  online?: boolean;
+  heartbeat?: OpsHeartbeat | null;
+  error?: string;
+};
+
+const TABS: ToneTab[] = ["ALL", "BULLISH", "BEARISH", "NEUTRAL"];
+
+export default function OverviewPage() {
+  const [data, setData] = useState<OverviewPayload | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
-  const [events, setEvents] = useState<OpsEvent[]>([]);
-  const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const after = useRef(0);
-  const scroller = useRef<HTMLDivElement>(null);
+  const [locked, setLocked] = useState(false);
+  const [tab, setTab] = useState<ToneTab>("ALL");
 
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
       try {
-        const [statusRes, logRes] = await Promise.all([fetch("/api/status"), fetch(`/api/logs?after=${after.current}`)]);
+        const [overviewRes, statusRes] = await Promise.all([
+          fetch("/api/overview", { headers: dashHeaders() }),
+          fetch("/api/status"),
+        ]);
+        const payload = (await overviewRes.json()) as OverviewPayload;
         const nextStatus = (await statusRes.json()) as Status;
-        const nextLogs = (await logRes.json()) as { events: OpsEvent[] };
         if (cancelled) {
           return;
         }
         setStatus(nextStatus);
-        if (nextLogs.events?.length) {
-          after.current = nextLogs.events[nextLogs.events.length - 1]?.seq ?? after.current;
-          setEvents((prev) => [...prev, ...nextLogs.events].slice(-400));
+        if (overviewRes.status === 401) {
+          setLocked(true);
+          setNotice("Enter DASH_SECRET on Parameters to unlock Overview.");
+          return;
         }
+        setLocked(false);
+        if (payload.error) {
+          setNotice(payload.error);
+          return;
+        }
+        setData(payload);
+        setNotice("");
       } catch (error: unknown) {
         if (!cancelled) {
           setNotice(error instanceof Error ? error.message : String(error));
@@ -42,115 +83,191 @@ export default function Page() {
       }
     };
     void tick();
-    const id = setInterval(() => void tick(), 1000);
+    const id = setInterval(() => void tick(), 20_000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
   }, []);
 
-  useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
-  }, [events.length]);
+  const headlines = useMemo(() => {
+    const rows = data?.headlines ?? [];
+    const filtered = tab === "ALL" ? rows : rows.filter((row) => row.tone === tab);
+    return filtered.slice(0, 40);
+  }, [data?.headlines, tab]);
 
-  const heartbeat = status?.heartbeat ?? null;
+  const callTotal =
+    (data?.calls.FLASH ?? 0) +
+    (data?.calls.FADE ?? 0) +
+    (data?.calls.CONFIRM ?? 0) +
+    (data?.calls.INVALIDATE ?? 0);
   const online = Boolean(status?.online);
-
-  const action = async (name: string) => {
-    setBusy(name);
-    setNotice("");
-    try {
-      const response = await fetch("/api/control", {
-        method: "POST",
-        headers: dashHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({ action: name }),
-      });
-      const json = (await response.json()) as { ok?: boolean; message?: string; error?: string };
-      setNotice(json.error ?? json.message ?? "");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const hint = useMemo(() => {
-    if (status?.vercel && !online) {
-      return "Vercel can only watch logs. Start the worker on a host that uses the same REDIS_URL (`pnpm worker`).";
-    }
-    if (!online) {
-      return "Worker offline. Start it here (local) or run `pnpm worker` in a terminal.";
-    }
-    if (heartbeat?.paused) {
-      return "Worker is paused. Jobs will log that they are skipped until you resume.";
-    }
-    return "Worker is live. Waiting lines mean the next cron has not fired yet.";
-  }, [heartbeat?.paused, online, status?.vercel]);
+  const paused = Boolean(status?.heartbeat?.paused);
+  const mixTotal = data ? data.mix.bull + data.mix.bear + data.mix.neutral : 0;
 
   return (
-    <main className="shell">
-      <header className="top">
-        <div>
-          <h1>signal-desk ops</h1>
-          <p className="sub">
-            Transparent worker console. Every fetch, skip, hold, send, and idle wait is logged.
-            This is not a trading UI.
-          </p>
-        </div>
-        <div className="top-actions">
-          <a className="badge" href="/parameters">Parameters</a>
-          <div className={`badge ${online ? "on" : ""}`}>
-            <span className={`dot ${online ? (heartbeat?.paused ? "pause" : "on") : ""}`} />
-            {online ? (heartbeat?.paused ? "paused" : `online pid ${heartbeat?.pid}`) : "offline"}
-          </div>
-        </div>
-      </header>
+    <AppShell
+      current="overview"
+      title="Overview"
+      subtitle="Last 24 hours of processed headlines, mempool prints, and calls. Console is the worker log."
+      extra={
+        <StatusChip
+          online={online}
+          paused={paused}
+          label={online ? (paused ? "paused" : "worker online") : "worker offline"}
+        />
+      }
+    >
+      {locked ? (
+        <p className="note">{notice}</p>
+      ) : (
+        <>
+          <section className="overview-grid">
+            <article className="card">
+              <h2>News mix</h2>
+              <div className="metric">{data ? (data.mix.score === null ? "mix n/a" : data.mixLabel) : "…"}</div>
+              {data && mixTotal > 0 ? (
+                <div className="mix-bar" aria-hidden="true">
+                  <span className="bull" style={{ width: `${(data.mix.bull / mixTotal) * 100}%` }} />
+                  <span className="bear" style={{ width: `${(data.mix.bear / mixTotal) * 100}%` }} />
+                  <span className="neutral" style={{ width: `${(data.mix.neutral / mixTotal) * 100}%` }} />
+                </div>
+              ) : null}
+              <div className="mix-legend">
+                {data ? (
+                  <>
+                    <span>
+                      <b>{data.mix.bull}</b> bull
+                    </span>
+                    <span>
+                      <b>{data.mix.bear}</b> bear
+                    </span>
+                    <span>
+                      <b>{data.mix.neutral}</b> neutral
+                    </span>
+                  </>
+                ) : (
+                  <span>loading</span>
+                )}
+              </div>
+            </article>
+            <article className="card">
+              <h2>Calls</h2>
+              {!data || callTotal === 0 ? (
+                <div className="metric">none</div>
+              ) : (
+                <div className="stat-row">
+                  <div className="stat">
+                    <span>FLASH</span>
+                    <strong>{data.calls.FLASH}</strong>
+                  </div>
+                  <div className="stat">
+                    <span>FADE</span>
+                    <strong>{data.calls.FADE}</strong>
+                  </div>
+                  <div className="stat">
+                    <span>CONFIRM</span>
+                    <strong>{data.calls.CONFIRM}</strong>
+                  </div>
+                  <div className="stat">
+                    <span>INVALIDATE</span>
+                    <strong>{data.calls.INVALIDATE}</strong>
+                  </div>
+                </div>
+              )}
+              <div className="meta">
+                {data?.lastCall
+                  ? `Last: ${data.lastCall.kind} ${data.lastCall.asset} · ${data.lastCall.why} · ${data.lastCall.realizedText}`
+                  : "Last: none"}
+              </div>
+            </article>
+            {data?.marks ? (
+              <article className="card">
+                <h2>Last marks</h2>
+                <div className="metric">
+                  {[
+                    data.marks.BTC !== undefined ? `BTC ${data.marks.BTC.toLocaleString()}` : null,
+                    data.marks.ETH !== undefined ? `ETH ${data.marks.ETH.toLocaleString()}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+                <div className="meta">from price_marks · not a live tape</div>
+              </article>
+            ) : null}
+            {data?.classified ? (
+              <article className="card">
+                <h2>Classified</h2>
+                <div className="mix-legend">
+                  {data.classified.map((row) => (
+                    <span key={row.class}>
+                      <b>{row.n}</b> {row.class}
+                    </span>
+                  ))}
+                </div>
+                <div className="meta">EventClass from classify · not headline tone</div>
+              </article>
+            ) : null}
+          </section>
 
-      <section className="grid">
-        <WaitCard title="News poll" wait={heartbeat?.waiting.news} at={heartbeat?.nextNewsAt} live={heartbeat?.newsLive} />
-        <WaitCard title="Tape OI" wait={heartbeat?.waiting.tape} at={heartbeat?.nextTapeAt} live={heartbeat?.tapeLive} />
-        <WaitCard title="DIGEST" wait={heartbeat?.waiting.digest} at={heartbeat?.nextDigestAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="00:00 / 08:00 / 16:00 UTC" />
-      </section>
+          <section className="card stack">
+            <h2>Large BTC</h2>
+            {data?.largeBtc.length ? (
+              <ul className="news-list">
+                {data.largeBtc.map((row) => (
+                  <li key={row.url}>
+                    <HeadlineRow row={row} hideTone />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-inline">No large BTC prints</p>
+            )}
+          </section>
 
-      <div className="controls">
-        <button className="primary" disabled={Boolean(busy) || (online && !heartbeat?.paused)} onClick={() => void action("start")}>
-          Start worker
-        </button>
-        <button disabled={Boolean(busy) || !online} onClick={() => void action("pause")}>Pause</button>
-        <button disabled={Boolean(busy) || !online} onClick={() => void action("resume")}>Resume</button>
-        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-news")}>Run news now</button>
-        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-tape")}>Run tape OI now</button>
-        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-digest")}>Send digest now</button>
-        <button className="danger" disabled={Boolean(busy) || !online} onClick={() => void action("stop")}>Stop</button>
-      </div>
-      <p className="note">{busy ? `Working: ${busy}` : notice || hint}</p>
-
-      <div className="logbox" ref={scroller}>
-        {events.length === 0 ? (
-          <div className="empty">No ops events yet. Start the worker and keep this tab open.</div>
-        ) : (
-          events.map((event) => (
-            <div className="row" key={`${event.seq}-${event.ts}`}>
-              <span className="ts">{event.ts.slice(11, 23)}</span>
-              <span className={`lvl lvl-${event.level}`}>{event.level}</span>
-              <span className="scope">{event.scope}</span>
-              <span>{event.message}</span>
+          <section className="card stack">
+            <h2>Headlines</h2>
+            <div className="tabs">
+              {TABS.map((name) => (
+                <button key={name} type="button" className={tab === name ? "on" : ""} onClick={() => setTab(name)}>
+                  {name}
+                </button>
+              ))}
             </div>
-          ))
-        )}
-      </div>
-    </main>
+            {headlines.length === 0 ? (
+              <p className="empty-inline">No headlines</p>
+            ) : (
+              <ul className="news-list">
+                {headlines.map((row) => (
+                  <li key={`${row.url}-${row.publishedAt}`}>
+                    <HeadlineRow row={row} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <p className="note">{notice || (data ? `Updated ${data.now.slice(11, 16)} UTC` : "Loading overview…")}</p>
+        </>
+      )}
+    </AppShell>
   );
 }
 
-function WaitCard(props: { title: string; wait?: string; at?: string; live?: boolean; extra?: string }) {
+function HeadlineRow(props: { row: Headline; hideTone?: boolean }) {
+  const time = props.row.publishedAt.slice(11, 16);
+  const title = props.row.href ? (
+    <a href={props.row.href} target="_blank" rel="noreferrer">
+      {props.row.title}
+    </a>
+  ) : (
+    <span>{props.row.title}</span>
+  );
   return (
-    <article className="card">
-      <h2>{props.title}</h2>
-      <div className="wait">{props.wait ?? "waiting for heartbeat…"}</div>
-      <div className="meta">
-        {props.live === undefined ? "" : props.live ? "live on" : "live off"}
-        {props.at ? ` · next ${props.at}` : ""}
-        {props.extra ? ` · ${props.extra}` : ""}
-      </div>
-    </article>
+    <div className="news-row">
+      {props.hideTone ? <span className="tone tone-NEUTRAL">MEMPOOL</span> : <span className={`tone tone-${props.row.tone}`}>{props.row.tone}</span>}
+      <span className="source-chip">{props.row.sourceId}</span>
+      {title}
+      <span className="ts">{time} UTC</span>
+    </div>
   );
 }
