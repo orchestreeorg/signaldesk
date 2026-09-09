@@ -224,6 +224,18 @@ export default function OverviewPage() {
               <p className="empty-inline">No large BTC prints</p>
             )}
           </section>
+      <div className="controls">
+        <button className="primary" disabled={Boolean(busy) || (online && !heartbeat?.paused)} onClick={() => void action("start")}>
+          Start worker
+        </button>
+        <button disabled={Boolean(busy) || !online} onClick={() => void action("pause")}>Pause</button>
+        <button disabled={Boolean(busy) || !online} onClick={() => void action("resume")}>Resume</button>
+        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-news")}>Run news now</button>
+        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-tape")}>Run tape OI now</button>
+        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-digest")}>Send digest now</button>
+        <button className="danger" disabled={Boolean(busy) || !online} onClick={() => void action("stop")}>Stop</button>
+      </div>
+      <p className="note">{busy ? `Working: ${busy}` : notice || hint}</p>
 
           <section className="card stack">
             <h2>Headlines</h2>
