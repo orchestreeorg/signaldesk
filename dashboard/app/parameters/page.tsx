@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { dashHeaders, writeDashSecret } from "@/lib/client-auth";
+import { AppShell } from "@/lib/nav";
 
 type ToneMode = "loose" | "balanced" | "strict";
 type HeadlineSend = "all" | "skip_neutral" | "directional_only";
@@ -150,14 +151,7 @@ export default function ParametersPage() {
 
   if (locked || !settings) {
     return (
-      <main className="shell">
-        <header className="top">
-          <div>
-            <h1>Parameters</h1>
-            <p className="sub">This page is gated by DASH_SECRET on Vercel.</p>
-          </div>
-          <a className="badge" href="/">← Console</a>
-        </header>
+    <AppShell current="parameters" title="Parameters" subtitle="This page is gated by DASH_SECRET on Vercel.">
         {locked ? (
           <section className="card stack">
             <label>
@@ -189,24 +183,19 @@ export default function ParametersPage() {
           </section>
         ) : null}
         <p className="note">{notice || "Loading parameters…"}</p>
-      </main>
+    </AppShell>
     );
   }
 
   return (
-    <main className="shell">
-      <header className="top">
-        <div>
-          <h1>Parameters</h1>
-          <p className="sub">
-            Sources, headline tone, and FLASH/FADE gates. Secrets stay in .env. This is not a trading UI.
-          </p>
-        </div>
-        <a className="badge" href="/">← Console</a>
-      </header>
-
+    <AppShell
+      current="parameters"
+      title="Parameters"
+      subtitle="Sources, headline tone, and FLASH/FADE gates. Secrets stay in .env. This is not a trading UI."
+    >
       <section className="card stack">
         <h2>News sources</h2>
+        <div className="table-wrap">
         <table className="params">
           <thead>
             <tr>
@@ -288,9 +277,12 @@ export default function ParametersPage() {
             ))}
           </tbody>
         </table>
-        <button type="button" onClick={() => setSources((rows) => [...rows, emptySource()])}>
-          Add source
-        </button>
+        </div>
+        <div className="controls">
+          <button type="button" onClick={() => setSources((rows) => [...rows, emptySource()])}>
+            Add source
+          </button>
+        </div>
       </section>
 
       <section className="card stack">
@@ -449,6 +441,6 @@ export default function ParametersPage() {
         </button>
       </div>
       <p className="note">{notice}</p>
-    </main>
+    </AppShell>
   );
 }

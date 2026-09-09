@@ -21,7 +21,7 @@ describe("digest job wiring", () => {
 
   it("accepts run-digest from the ops control API", () => {
     const route = readFileSync(join(here, "../../dashboard/app/api/control/route.ts"), "utf8");
-    const page = readFileSync(join(here, "../../dashboard/app/page.tsx"), "utf8");
+    const page = readFileSync(join(here, "../../dashboard/app/console/page.tsx"), "utf8");
     expect(route).toMatch(/"run-digest"/);
     expect(page).toMatch(/action\("run-digest"\)/);
     expect(page).toMatch(/Send digest now/);
