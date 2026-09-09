@@ -40,6 +40,10 @@ export type OverviewHeadline = {
   tone: HeadlineTone;
 };
 
+export type OverviewLargeBtc = OverviewHeadline & {
+  btc: number | null;
+};
+
 export type OverviewLastCall = {
   kind: "FLASH" | "FADE";
   asset: Asset;
@@ -65,7 +69,7 @@ export type OverviewReport = {
   mixLabel: string;
   calls: DigestCallCounts;
   lastCall: OverviewLastCall | null;
-  largeBtc: OverviewHeadline[];
+  largeBtc: OverviewLargeBtc[];
   headlines: OverviewHeadline[];
   classified: OverviewClassCount[] | null;
   marks: OverviewMarks | null;
@@ -94,7 +98,19 @@ export function pickLargeBtc(
 }
 
 export function capHeadlines(items: OverviewItemRow[], limit = OVERVIEW_HEADLINE_LIMIT): OverviewItemRow[] {
-  return [...items].sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()).slice(0, limit);
+  return items
+    .filter((item) => item.sourceId !== MEMPOOL_SOURCE_ID)
+    .sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
+    .slice(0, limit);
+}
+
+export function parseBtcFromTitle(title: string): number | null {
+  const match = title.match(/([\d,]+(?:\.\d+)?)\s*BTC\b/i);
+  if (!match) {
+    return null;
+  }
+  const n = Number(match[1].replace(/,/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export function toHeadline(item: OverviewItemRow, settings: DeskSettings): OverviewHeadline {
@@ -106,6 +122,10 @@ export function toHeadline(item: OverviewItemRow, settings: DeskSettings): Overv
     publishedAt: item.publishedAt.toISOString(),
     tone: headlineTone(item.title, settings),
   };
+}
+
+export function toLargeBtc(item: OverviewItemRow, settings: DeskSettings): OverviewLargeBtc {
+  return { ...toHeadline(item, settings), btc: parseBtcFromTitle(item.title) };
 }
 
 export function filterHeadlinesByTone(
@@ -151,7 +171,7 @@ export function buildOverviewReport(input: {
     mixLabel: formatMixScore(mix.score),
     calls: countCalls(input.alerts),
     lastCall: lastCallView(pickLastCall(input.alerts)),
-    largeBtc: pickLargeBtc(input.items).map((item) => toHeadline(item, settings)),
+    largeBtc: pickLargeBtc(input.items).map((item) => toLargeBtc(item, settings)),
     headlines: capHeadlines(input.items, 500).map((item) => toHeadline(item, settings)),
     classified: input.classified && input.classified.length > 0 ? input.classified : null,
     marks: input.marks && (input.marks.BTC !== undefined || input.marks.ETH !== undefined) ? input.marks : null,
