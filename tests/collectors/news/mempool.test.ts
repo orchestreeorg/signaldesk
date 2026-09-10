@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ingestFeed } from "../../../src/collectors/news/ingest.js";
 import {
+  DEFAULT_BTC_LARGE_TX_BTC,
   formatBtcAmount,
   parseLargeTxPrints,
   SATS_PER_BTC,
@@ -23,19 +24,20 @@ function parseFixture() {
     explorerOrigin: "https://mempool.space",
     height: 900001,
     timestamp: 1757347200,
-    thresholdSats: thresholdSats(1000),
+    thresholdSats: thresholdSats(DEFAULT_BTC_LARGE_TX_BTC),
   });
 }
 
 describe("mempool large tx parse", () => {
-  it("keeps one print per txid for a single output at or above 1000 BTC", () => {
+  it("keeps one print per txid for a single output at or above 5000 BTC", () => {
+    expect(DEFAULT_BTC_LARGE_TX_BTC).toBe(5000);
     const prints = parseFixture();
     expect(prints.map((item) => item.title)).toEqual([
-      "Large BTC transfer: 1,500 BTC",
-      "Large BTC transfer: 1,200 BTC",
+      "Large BTC transfer: 15,000 BTC",
+      "Large BTC transfer: 12,000 BTC",
     ]);
     expect(prints[0]?.url).toBe(
-      "https://mempool.space/tx/aa11large1500aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "https://mempool.space/tx/aa11large15000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     );
     expect(prints[1]?.body).toContain("block 900001");
     expect(prints[1]?.body).toContain("dd44twolarge");
@@ -50,7 +52,32 @@ describe("mempool large tx parse", () => {
   it("does not emit two items when one tx has two large outputs", () => {
     const prints = parseFixture().filter((item) => item.url.includes("dd44twolarge"));
     expect(prints).toHaveLength(1);
-    expect(prints[0]?.title).toContain("1,200 BTC");
+    expect(prints[0]?.title).toContain("12,000 BTC");
+  });
+
+  it("drops prints under 5000 BTC", () => {
+    const prints = parseLargeTxPrints(
+      [
+        {
+          txid: "ee55under4999eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          vin: [{ is_coinbase: false }],
+          vout: [{ value: 4999 * SATS_PER_BTC }],
+        },
+        {
+          txid: "ff66at5000ffffffffffffffffffffffffffffffffffffffffffffffffff",
+          vin: [{ is_coinbase: false }],
+          vout: [{ value: 5000 * SATS_PER_BTC }],
+        },
+      ],
+      {
+        explorerOrigin: "https://mempool.space",
+        height: 900001,
+        timestamp: 1757347200,
+        thresholdSats: thresholdSats(DEFAULT_BTC_LARGE_TX_BTC),
+      },
+    );
+    expect(prints).toHaveLength(1);
+    expect(prints[0]?.title).toContain("5,000 BTC");
   });
 
   it("formats whole and tenths of a BTC", () => {
@@ -112,7 +139,7 @@ describe("mempool poll", () => {
     const many = Array.from({ length: 8 }, (_, index) => ({
       txid: `ff${index.toString().padStart(62, "0")}`,
       vin: [{ is_coinbase: false }],
-      vout: [{ value: (2000 - index) * SATS_PER_BTC }],
+      vout: [{ value: (8000 - index) * SATS_PER_BTC }],
     }));
     const items = await pollNews({
       sources: [mempool],
@@ -124,7 +151,7 @@ describe("mempool poll", () => {
       },
     });
     expect(items).toHaveLength(5);
-    expect(items[0]?.title).toContain("2,000 BTC");
+    expect(items[0]?.title).toContain("8,000 BTC");
   });
 
   it("skips the source when json fetch fails", async () => {
