@@ -5,6 +5,7 @@ import {
   classifyGpr,
   gprBar,
   loadGprDaily,
+  parseGprDailyObservations,
   parseGprDailyRows,
   parseGprDailyWorkbook,
   resetGprDailyCache,
@@ -40,6 +41,15 @@ describe("parseGprDailyRows", () => {
     expect(parseGprDailyRows([{ DAY: "20260908", GPRD: "." }])).toBeNull();
     expect(parseGprDailyRows([])).toBeNull();
   });
+
+  it("exposes each valid daily observation", () => {
+    const rows = parseGprDailyObservations([
+      { DAY: "20260907", GPRD: 144.86 },
+      { DAY: "20260908", GPRD: 83.65 },
+    ]);
+    expect(rows.map((row) => row.value)).toEqual([144.86, 83.65]);
+    expect(rows[1]?.asOf).toBe("2026-09-08T00:00:00.000Z");
+  });
 });
 
 describe("classifyGpr", () => {
@@ -67,7 +77,7 @@ describe("loadGprDaily", () => {
     let calls = 0;
     const fetchImpl: typeof fetch = async () => {
       calls += 1;
-      return new Response(body, { status: 200 });
+      return new Response(body as unknown as BodyInit, { status: 200 });
     };
     const t0 = Date.parse("2026-09-09T12:00:00.000Z");
     const first = await loadGprDaily({ fetchImpl, now: new Date(t0) });

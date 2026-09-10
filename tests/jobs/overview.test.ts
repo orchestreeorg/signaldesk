@@ -11,6 +11,7 @@ import {
   OVERVIEW_MEMPOOL_LIMIT,
   pickLargeBtc,
   safeHref,
+  serializeOverview,
   type OverviewItemRow,
 } from "../../src/jobs/overview.js";
 
@@ -77,7 +78,7 @@ describe("overview mempool and tabs", () => {
     expect(pickLargeBtc(mixItems).every((row) => row.sourceId === "mempool")).toBe(true);
   });
 
-  it("caps large BTC candles at 20 newest mempool prints", () => {
+  it("caps large BTC candles at 8 newest mempool prints", () => {
     const prints = Array.from({ length: 25 }, (_, index) =>
       item({
         title: `Large BTC transfer: ${1000 + index} BTC`,
@@ -87,10 +88,10 @@ describe("overview mempool and tabs", () => {
       }),
     );
     const picked = pickLargeBtc(prints);
-    expect(OVERVIEW_MEMPOOL_LIMIT).toBe(20);
-    expect(picked).toHaveLength(20);
+    expect(OVERVIEW_MEMPOOL_LIMIT).toBe(8);
+    expect(picked).toHaveLength(8);
     expect(picked[0]?.title).toContain("1000 BTC");
-    expect(picked[19]?.title).toContain("1019 BTC");
+    expect(picked[7]?.title).toContain("1007 BTC");
   });
 
   it("parses mempool BTC amounts from titles", () => {
@@ -228,6 +229,23 @@ describe("overview mempool and tabs", () => {
     expect(report.gold?.value).toBe(4435.2);
     expect(report.sp500?.changePct).toBe(0.78);
   });
+
+  it("passes and serializes the weekly macro index", () => {
+    const report = buildOverviewReport({
+      now,
+      alerts: [],
+      items: [],
+      macroIndex: {
+        score: 6.4,
+        label: "Bull",
+        conflicted: false,
+        asOf: now.toISOString(),
+        legs: [],
+      },
+    });
+    expect(report.macroIndex?.score).toBe(6.4);
+    expect(serializeOverview(report).macroIndex?.label).toBe("Bull");
+  });
 });
 
 describe("overview links", () => {
@@ -247,6 +265,8 @@ describe("overview isolation", () => {
     const gpr = readFileSync(join(here, "../../src/jobs/gprDaily.ts"), "utf8");
     const gold = readFileSync(join(here, "../../src/jobs/goldPrice.ts"), "utf8");
     const sp500 = readFileSync(join(here, "../../src/jobs/fredSp500.ts"), "utf8");
+    const macroScale = readFileSync(join(here, "../../src/jobs/macroScale.ts"), "utf8");
+    const macroObservations = readFileSync(join(here, "../../src/jobs/macroObservations.ts"), "utf8");
     const route = readFileSync(join(here, "../../dashboard/app/api/overview/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/page.tsx"), "utf8");
     const fuse = readFileSync(join(here, "../../src/fusion/fuse.ts"), "utf8");
@@ -257,6 +277,8 @@ describe("overview isolation", () => {
     expect(gpr).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
     expect(gold).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
     expect(sp500).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
+    expect(macroScale).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
+    expect(macroObservations).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
     expect(route).not.toMatch(/grammy|sendAlert|sendDigest/i);
     expect(page).not.toMatch(/dangerouslySetInnerHTML/);
     expect(fuse).not.toMatch(

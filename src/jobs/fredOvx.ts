@@ -1,3 +1,5 @@
+import type { MacroObservationInput } from "./macroObservations.js";
+
 export const FRED_OVX_TTL_MS = 15 * 60_000;
 export const FRED_OVX_ERROR_TTL_MS = 60_000;
 export const FRED_OVX_SERIES_ID = "OVXCLS";
@@ -22,9 +24,11 @@ type CacheEntry = {
 };
 
 let cache: CacheEntry | null = null;
+let observations: MacroObservationInput[] = [];
 
 export function resetFredOvxCache(): void {
   cache = null;
+  observations = [];
 }
 
 export function classifyOvx(value: number): string {
@@ -54,14 +58,32 @@ function observationAsOf(date: string): string {
 }
 
 export function parseFredOvx(raw: unknown): OverviewOvx | null {
+  const latest = parseFredOvxObservations(raw)[0];
+  if (!latest) {
+    return null;
+  }
+  const { stress, calm } = ovxBar(latest.value);
+  return {
+    source: "fred",
+    seriesId: FRED_OVX_SERIES_ID,
+    value: latest.value,
+    classification: classifyOvx(latest.value),
+    stress,
+    calm,
+    asOf: new Date(latest.asOf).toISOString(),
+  };
+}
+
+export function parseFredOvxObservations(raw: unknown): MacroObservationInput[] {
   if (!raw || typeof raw !== "object") {
-    return null;
+    return [];
   }
-  const observations = (raw as { observations?: unknown }).observations;
-  if (!Array.isArray(observations)) {
-    return null;
+  const rawObservations = (raw as { observations?: unknown }).observations;
+  if (!Array.isArray(rawObservations)) {
+    return [];
   }
-  for (const row of observations) {
+  const parsed: MacroObservationInput[] = [];
+  for (const row of rawObservations) {
     if (!row || typeof row !== "object") {
       continue;
     }
@@ -72,17 +94,18 @@ export function parseFredOvx(raw: unknown): OverviewOvx | null {
       continue;
     }
     const { stress, calm } = ovxBar(n);
-    return {
-      source: "fred",
-      seriesId: FRED_OVX_SERIES_ID,
-      value: Number(n.toFixed(2)),
-      classification: classifyOvx(n),
-      stress,
-      calm,
+    parsed.push({
+      source: "ovx",
       asOf: observationAsOf(date),
-    };
+      value: Number(n.toFixed(2)),
+      aux: { seriesId: FRED_OVX_SERIES_ID, classification: classifyOvx(n), stress, calm },
+    });
   }
-  return null;
+  return parsed;
+}
+
+export function getFredOvxObservations(): MacroObservationInput[] {
+  return observations;
 }
 
 export function fredOvxUrl(apiKey: string, seriesId = FRED_OVX_SERIES_ID): string {
@@ -91,7 +114,7 @@ export function fredOvxUrl(apiKey: string, seriesId = FRED_OVX_SERIES_ID): strin
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("file_type", "json");
   url.searchParams.set("sort_order", "desc");
-  url.searchParams.set("limit", "8");
+  url.searchParams.set("limit", "60");
   return url.toString();
 }
 
@@ -107,6 +130,7 @@ export async function loadFredOvx(opts?: {
   }
   const apiKey = opts?.apiKey ?? process.env["FRED_API_KEY"] ?? "";
   if (!apiKey) {
+    observations = [];
     cache = { at: now.getTime(), value: null, ttlMs: FRED_OVX_ERROR_TTL_MS };
     return null;
   }
@@ -120,10 +144,13 @@ export async function loadFredOvx(opts?: {
       signal: AbortSignal.timeout(5_000),
     });
     if (!response.ok) {
+      observations = [];
       cache = { at: now.getTime(), value: null, ttlMs: FRED_OVX_ERROR_TTL_MS };
       return null;
     }
-    const value = parseFredOvx(await response.json());
+    const raw = await response.json();
+    observations = parseFredOvxObservations(raw);
+    const value = parseFredOvx(raw);
     cache = {
       at: now.getTime(),
       value,
@@ -131,6 +158,7 @@ export async function loadFredOvx(opts?: {
     };
     return value;
   } catch {
+    observations = [];
     cache = { at: now.getTime(), value: null, ttlMs: FRED_OVX_ERROR_TTL_MS };
     return null;
   }

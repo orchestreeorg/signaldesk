@@ -19,6 +19,22 @@ type Headline = {
 
 type LargeBtc = Headline & { btc: number | null };
 
+type MacroIndex = {
+  score: number;
+  label: string;
+  conflicted: boolean;
+  asOf: string;
+  legs: Array<{
+    id: string;
+    raw: number | null;
+    score: number | null;
+    weight: number;
+    inverted: boolean;
+    included: boolean;
+    reason: string;
+  }>;
+};
+
 type OverviewPayload = {
   now: string;
   mix: { bull: number; bear: number; neutral: number; score: number | null };
@@ -40,6 +56,7 @@ type OverviewPayload = {
   gpr: { source: string; value: number; classification: string; stress: number; calm: number; asOf: string } | null;
   gold: { source: string; symbol: string; value: number; changePct: number | null; asOf: string } | null;
   sp500: { source: string; seriesId: string; value: number; changePct: number | null; asOf: string } | null;
+  macroIndex: MacroIndex | null;
   error?: string;
 };
 
@@ -130,28 +147,64 @@ export default function OverviewPage() {
         <p className="note">{notice}</p>
       ) : (
         <>
-          <article className="card large-btc-card">
-            {!data ? (
-              <>
-                <h2>Large BTC</h2>
-                <Spinner label="Loading large BTC" tall />
-              </>
-            ) : data.largeBtc.length ? (
-              <>
-                <div className="quote-row">
+          <section className="overview-lead">
+            <article className="card large-btc-card">
+              {!data ? (
+                <>
                   <h2>Large BTC</h2>
-                  <div className="metric">{formatBtc(data.largeBtc.reduce((sum, row) => sum + (row.btc ?? 0), 0))}</div>
-                  <div className="meta">{data.largeBtc.length} prints · 24h</div>
-                </div>
-                <BtcBars rows={data.largeBtc} />
-              </>
-            ) : (
-              <>
-                <h2>Large BTC</h2>
-                <p className="empty-inline">No large BTC prints</p>
-              </>
-            )}
-          </article>
+                  <Spinner label="Loading large BTC" tall />
+                </>
+              ) : data.largeBtc.length ? (
+                <>
+                  <div className="quote-row">
+                    <h2>Large BTC</h2>
+                    <div className="metric">{formatBtc(data.largeBtc.reduce((sum, row) => sum + (row.btc ?? 0), 0))}</div>
+                    <div className="meta">{data.largeBtc.length} prints · 24h</div>
+                  </div>
+                  <BtcBars rows={data.largeBtc} />
+                </>
+              ) : (
+                <>
+                  <h2>Large BTC</h2>
+                  <p className="empty-inline">No large BTC prints</p>
+                </>
+              )}
+            </article>
+            <article className="card macro-index-card">
+              <h2>Weekly risk-on index</h2>
+              {!data ? (
+                <Spinner label="Loading weekly macro index" tall />
+              ) : data.macroIndex ? (
+                <>
+                  <div className="macro-index-head">
+                    <div className={`metric ${signedClass(data.macroIndex.score - 5)}`}>
+                      {data.macroIndex.score.toFixed(1)}
+                    </div>
+                    <strong>{data.macroIndex.label}</strong>
+                    {data.macroIndex.conflicted ? <span className="macro-conflict">conflicted</span> : null}
+                  </div>
+                  <div className="macro-legs">
+                    {data.macroIndex.legs.map((leg) => (
+                      <div className={leg.included ? "macro-leg" : "macro-leg omitted"} key={leg.id} title={leg.reason}>
+                        <span>
+                          {leg.id.replace("_", " ")}
+                          {leg.inverted ? " ↕" : ""}
+                        </span>
+                        <b>{leg.score === null ? "n/a" : leg.score.toFixed(1)}</b>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="meta">1 bearish · 10 bullish · weekly context · not fusion</div>
+                </>
+              ) : (
+                <>
+                  <div className="metric">n/a</div>
+                  <div className="meta">Collecting enough daily macro history · not fusion</div>
+                </>
+              )}
+            </article>
+            <article className="card lead-placeholder" aria-hidden="true" />
+          </section>
 
           <section className="overview-metrics">
             <article className="card">

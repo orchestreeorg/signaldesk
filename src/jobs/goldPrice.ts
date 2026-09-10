@@ -1,8 +1,10 @@
+import type { MacroObservationInput } from "./macroObservations.js";
+
 export const GOLD_PRICE_TTL_MS = 15 * 60_000;
 export const GOLD_PRICE_ERROR_TTL_MS = 60_000;
 export const YAHOO_GOLD_SYMBOL = "GC=F";
 export const DEFAULT_YAHOO_GOLD_URL =
-  "https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=10d";
+  "https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=1mo";
 
 export type OverviewGold = {
   source: "yahoo";
@@ -19,9 +21,11 @@ type CacheEntry = {
 };
 
 let cache: CacheEntry | null = null;
+let observations: MacroObservationInput[] = [];
 
 export function resetGoldPriceCache(): void {
   cache = null;
+  observations = [];
 }
 
 function asOfFromUnix(seconds: unknown): string {
@@ -64,6 +68,19 @@ function closesFromChart(raw: unknown): { t: number; v: number }[] {
     }
   }
   return points;
+}
+
+export function parseYahooGoldObservations(raw: unknown): MacroObservationInput[] {
+  return closesFromChart(raw).map((point) => ({
+    source: "gold",
+    asOf: asOfFromUnix(point.t),
+    value: Number(point.v.toFixed(2)),
+    aux: { symbol: YAHOO_GOLD_SYMBOL },
+  }));
+}
+
+export function getGoldPriceObservations(): MacroObservationInput[] {
+  return observations;
 }
 
 export function parseYahooGold(raw: unknown): OverviewGold | null {
@@ -115,10 +132,13 @@ export async function loadGoldPrice(opts?: {
       signal: AbortSignal.timeout(8_000),
     });
     if (!response.ok) {
+      observations = [];
       cache = { at: now.getTime(), value: null, ttlMs: GOLD_PRICE_ERROR_TTL_MS };
       return null;
     }
-    const value = parseYahooGold(await response.json());
+    const raw = await response.json();
+    observations = parseYahooGoldObservations(raw);
+    const value = parseYahooGold(raw);
     cache = {
       at: now.getTime(),
       value,
@@ -126,6 +146,7 @@ export async function loadGoldPrice(opts?: {
     };
     return value;
   } catch {
+    observations = [];
     cache = { at: now.getTime(), value: null, ttlMs: GOLD_PRICE_ERROR_TTL_MS };
     return null;
   }

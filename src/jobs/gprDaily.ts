@@ -1,4 +1,5 @@
 import xlsx from "xlsx";
+import type { MacroObservationInput } from "./macroObservations.js";
 
 export const GPR_DAILY_TTL_MS = 12 * 60 * 60_000;
 export const GPR_DAILY_ERROR_TTL_MS = 5 * 60_000;
@@ -23,9 +24,11 @@ type CacheEntry = {
 };
 
 let cache: CacheEntry | null = null;
+let observations: MacroObservationInput[] = [];
 
 export function resetGprDailyCache(): void {
   cache = null;
+  observations = [];
 }
 
 export function classifyGpr(value: number): string {
@@ -63,6 +66,22 @@ function dayAsOf(day: string): string {
 }
 
 export function parseGprDailyRows(rows: unknown[]): OverviewGpr | null {
+  const last = parseGprDailyObservations(rows).at(-1);
+  if (!last) {
+    return null;
+  }
+  const { stress, calm } = gprBar(last.value);
+  return {
+    source: "iacoviello",
+    value: last.value,
+    classification: classifyGpr(last.value),
+    stress,
+    calm,
+    asOf: new Date(last.asOf).toISOString(),
+  };
+}
+
+export function parseGprDailyObservations(rows: unknown[]): MacroObservationInput[] {
   const parsed: { day: string; value: number }[] = [];
   for (const row of rows) {
     if (!row || typeof row !== "object") {
@@ -77,32 +96,40 @@ export function parseGprDailyRows(rows: unknown[]): OverviewGpr | null {
     parsed.push({ day, value });
   }
   parsed.sort((a, b) => a.day.localeCompare(b.day));
-  const last = parsed.at(-1);
-  if (!last) {
-    return null;
-  }
-  const { stress, calm } = gprBar(last.value);
-  return {
-    source: "iacoviello",
-    value: Number(last.value.toFixed(2)),
-    classification: classifyGpr(last.value),
-    stress,
-    calm,
-    asOf: dayAsOf(last.day),
-  };
+  return parsed.map((row) => {
+    const { stress, calm } = gprBar(row.value);
+    return {
+      source: "gpr",
+      value: Number(row.value.toFixed(2)),
+      asOf: dayAsOf(row.day),
+      aux: { classification: classifyGpr(row.value), stress, calm },
+    };
+  });
 }
 
-export function parseGprDailyWorkbook(input: Buffer): OverviewGpr | null {
+function workbookRows(input: Buffer): unknown[] {
   const workbook = xlsx.read(input, { type: "buffer" });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
-    return null;
+    return [];
   }
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) {
-    return null;
+    return [];
   }
-  return parseGprDailyRows(xlsx.utils.sheet_to_json(sheet, { defval: null }));
+  return xlsx.utils.sheet_to_json(sheet, { defval: null });
+}
+
+export function parseGprDailyWorkbook(input: Buffer): OverviewGpr | null {
+  return parseGprDailyRows(workbookRows(input));
+}
+
+export function parseGprDailyWorkbookObservations(input: Buffer): MacroObservationInput[] {
+  return parseGprDailyObservations(workbookRows(input));
+}
+
+export function getGprDailyObservations(): MacroObservationInput[] {
+  return observations;
 }
 
 export async function loadGprDaily(opts?: {
@@ -124,10 +151,13 @@ export async function loadGprDaily(opts?: {
       signal: AbortSignal.timeout(20_000),
     });
     if (!response.ok) {
+      observations = [];
       cache = { at: now.getTime(), value: null, ttlMs: GPR_DAILY_ERROR_TTL_MS };
       return null;
     }
-    const value = parseGprDailyWorkbook(Buffer.from(await response.arrayBuffer()));
+    const body = Buffer.from(await response.arrayBuffer());
+    observations = parseGprDailyWorkbookObservations(body).slice(-60);
+    const value = parseGprDailyWorkbook(body);
     cache = {
       at: now.getTime(),
       value,
@@ -135,6 +165,7 @@ export async function loadGprDaily(opts?: {
     };
     return value;
   } catch {
+    observations = [];
     cache = { at: now.getTime(), value: null, ttlMs: GPR_DAILY_ERROR_TTL_MS };
     return null;
   }

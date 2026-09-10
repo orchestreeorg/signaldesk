@@ -1,5 +1,6 @@
 import {
   doublePrecision,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -69,4 +70,15 @@ export const outcomes = pgTable(
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   },
   (table) => [primaryKey({ columns: [table.alertId, table.horizon] })],
+);
+
+export const macroObservations = pgTable(
+  "macro_observations",
+  {
+    source: text("source").notNull(),
+    asOf: timestamp("as_of", { withTimezone: true }).notNull(),
+    value: doublePrecision("value").notNull(),
+    aux: jsonb("aux").$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (table) => [primaryKey({ columns: [table.source, table.asOf] })],
 );

@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { FRED_SP500_TTL_MS, loadFredSp500, parseFredSp500, resetFredSp500Cache } from "../../src/jobs/fredSp500.js";
+import {
+  FRED_SP500_TTL_MS,
+  fredSp500Url,
+  loadFredSp500,
+  parseFredSp500,
+  parseFredSp500Observations,
+  resetFredSp500Cache,
+} from "../../src/jobs/fredSp500.js";
 
 afterEach(() => {
   resetFredSp500Cache();
@@ -27,6 +34,19 @@ describe("parseFredSp500", () => {
   it("returns null when every value is missing", () => {
     expect(parseFredSp500({ observations: [{ date: "2026-09-08", value: "." }] })).toBeNull();
     expect(parseFredSp500({})).toBeNull();
+  });
+
+  it("exposes valid history and requests 60 observations", () => {
+    expect(
+      parseFredSp500Observations({
+        observations: [
+          { date: "2026-09-05", value: "6500" },
+          { date: "2026-09-04", value: "." },
+          { date: "2026-09-03", value: "6400" },
+        ],
+      }),
+    ).toHaveLength(2);
+    expect(new URL(fredSp500Url("key")).searchParams.get("limit")).toBe("60");
   });
 });
 
