@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   FRED_OVX_TTL_MS,
   classifyOvx,
+  fredOvxUrl,
   loadFredOvx,
   ovxBar,
   parseFredOvx,
+  parseFredOvxObservations,
   resetFredOvxCache,
 } from "../../src/jobs/fredOvx.js";
 
@@ -34,6 +36,19 @@ describe("parseFredOvx", () => {
   it("returns null when every value is missing", () => {
     expect(parseFredOvx({ observations: [{ date: "2026-09-08", value: "." }] })).toBeNull();
     expect(parseFredOvx({})).toBeNull();
+  });
+
+  it("exposes valid history and requests 60 observations", () => {
+    expect(
+      parseFredOvxObservations({
+        observations: [
+          { date: "2026-09-05", value: "32.14" },
+          { date: "2026-09-04", value: "." },
+          { date: "2026-09-03", value: "30" },
+        ],
+      }),
+    ).toHaveLength(2);
+    expect(new URL(fredOvxUrl("key")).searchParams.get("limit")).toBe("60");
   });
 });
 

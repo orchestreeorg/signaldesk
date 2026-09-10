@@ -1,3 +1,5 @@
+import type { MacroObservationInput } from "./macroObservations.js";
+
 export const FRED_SP500_TTL_MS = 15 * 60_000;
 export const FRED_SP500_ERROR_TTL_MS = 60_000;
 export const FRED_SP500_SERIES_ID = "SP500";
@@ -18,9 +20,11 @@ type CacheEntry = {
 };
 
 let cache: CacheEntry | null = null;
+let observations: MacroObservationInput[] = [];
 
 export function resetFredSp500Cache(): void {
   cache = null;
+  observations = [];
 }
 
 function observationAsOf(date: string): string {
@@ -73,13 +77,26 @@ export function parseFredSp500(raw: unknown): OverviewSp500 | null {
   };
 }
 
+export function parseFredSp500Observations(raw: unknown): MacroObservationInput[] {
+  return numericObservations(raw).map((row) => ({
+    source: "sp500",
+    asOf: observationAsOf(row.date),
+    value: Number(row.value.toFixed(2)),
+    aux: { seriesId: FRED_SP500_SERIES_ID },
+  }));
+}
+
+export function getFredSp500Observations(): MacroObservationInput[] {
+  return observations;
+}
+
 export function fredSp500Url(apiKey: string, seriesId = FRED_SP500_SERIES_ID): string {
   const url = new URL(DEFAULT_FRED_OBSERVATIONS_URL);
   url.searchParams.set("series_id", seriesId);
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("file_type", "json");
   url.searchParams.set("sort_order", "desc");
-  url.searchParams.set("limit", "8");
+  url.searchParams.set("limit", "60");
   return url.toString();
 }
 
@@ -95,6 +112,7 @@ export async function loadFredSp500(opts?: {
   }
   const apiKey = opts?.apiKey ?? process.env["FRED_API_KEY"] ?? "";
   if (!apiKey) {
+    observations = [];
     cache = { at: now.getTime(), value: null, ttlMs: FRED_SP500_ERROR_TTL_MS };
     return null;
   }
@@ -108,10 +126,13 @@ export async function loadFredSp500(opts?: {
       signal: AbortSignal.timeout(5_000),
     });
     if (!response.ok) {
+      observations = [];
       cache = { at: now.getTime(), value: null, ttlMs: FRED_SP500_ERROR_TTL_MS };
       return null;
     }
-    const value = parseFredSp500(await response.json());
+    const raw = await response.json();
+    observations = parseFredSp500Observations(raw);
+    const value = parseFredSp500(raw);
     cache = {
       at: now.getTime(),
       value,
@@ -119,6 +140,7 @@ export async function loadFredSp500(opts?: {
     };
     return value;
   } catch {
+    observations = [];
     cache = { at: now.getTime(), value: null, ttlMs: FRED_SP500_ERROR_TTL_MS };
     return null;
   }

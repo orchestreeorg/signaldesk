@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { GOLD_PRICE_TTL_MS, loadGoldPrice, parseYahooGold, resetGoldPriceCache } from "../../src/jobs/goldPrice.js";
+import {
+  DEFAULT_YAHOO_GOLD_URL,
+  GOLD_PRICE_TTL_MS,
+  loadGoldPrice,
+  parseYahooGold,
+  parseYahooGoldObservations,
+  resetGoldPriceCache,
+} from "../../src/jobs/goldPrice.js";
 
 afterEach(() => {
   resetGoldPriceCache();
@@ -58,6 +65,11 @@ describe("parseYahooGold", () => {
   it("returns null when every close is missing", () => {
     expect(parseYahooGold({ chart: { result: [{ timestamp: [1], meta: {}, indicators: { quote: [{ close: [null] }] } }] } })).toBeNull();
     expect(parseYahooGold({})).toBeNull();
+  });
+
+  it("exposes daily closes and requests at least one month", () => {
+    expect(parseYahooGoldObservations(yahooGold())).toHaveLength(3);
+    expect(new URL(DEFAULT_YAHOO_GOLD_URL).searchParams.get("range")).toBe("1mo");
   });
 });
 

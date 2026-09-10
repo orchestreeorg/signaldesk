@@ -19,13 +19,19 @@ import {
 } from "./digest.js";
 import { loadCoingeckoSentiment, type OverviewSentiment } from "./coingeckoSentiment.js";
 import { loadCmcFearGreed, type OverviewFearGreed } from "./cmcFearGreed.js";
-import { loadFredOvx, type OverviewOvx } from "./fredOvx.js";
-import { loadGprDaily, type OverviewGpr } from "./gprDaily.js";
-import { loadGoldPrice, type OverviewGold } from "./goldPrice.js";
-import { loadFredSp500, type OverviewSp500 } from "./fredSp500.js";
+import { getFredOvxObservations, loadFredOvx, type OverviewOvx } from "./fredOvx.js";
+import { getGprDailyObservations, loadGprDaily, type OverviewGpr } from "./gprDaily.js";
+import { getGoldPriceObservations, loadGoldPrice, type OverviewGold } from "./goldPrice.js";
+import { getFredSp500Observations, loadFredSp500, type OverviewSp500 } from "./fredSp500.js";
+import {
+  loadMacroHistory,
+  persistMacroObservations,
+  type MacroObservationInput,
+} from "./macroObservations.js";
+import { buildMacroIndex, type OverviewMacroIndex } from "./macroScale.js";
 
 export const OVERVIEW_HEADLINE_LIMIT = 40;
-export const OVERVIEW_MEMPOOL_LIMIT = 20;
+export const OVERVIEW_MEMPOOL_LIMIT = 8;
 export const MEMPOOL_SOURCE_ID = "mempool";
 
 export type OverviewToneTab = "ALL" | HeadlineTone;
@@ -85,6 +91,7 @@ export type OverviewReport = {
   gpr: OverviewGpr | null;
   gold: OverviewGold | null;
   sp500: OverviewSp500 | null;
+  macroIndex: OverviewMacroIndex | null;
 };
 
 export function safeHref(url: string): string | null {
@@ -121,7 +128,7 @@ export function parseBtcFromTitle(title: string): number | null {
   if (!match) {
     return null;
   }
-  const n = Number(match[1].replace(/,/g, ""));
+  const n = Number((match[1] ?? "").replace(/,/g, ""));
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
@@ -177,6 +184,7 @@ export function buildOverviewReport(input: {
   gpr?: OverviewGpr | null;
   gold?: OverviewGold | null;
   sp500?: OverviewSp500 | null;
+  macroIndex?: OverviewMacroIndex | null;
 }): OverviewReport {
   const settings = input.settings ?? DEFAULT_DESK_SETTINGS;
   const mix = scoreNewsMix(
@@ -199,6 +207,7 @@ export function buildOverviewReport(input: {
     gpr: input.gpr ?? null,
     gold: input.gold ?? null,
     sp500: input.sp500 ?? null,
+    macroIndex: input.macroIndex ?? null,
   };
 }
 
@@ -321,7 +330,7 @@ export async function buildOverview(
     loadGoldPrice({ now }),
     loadFredSp500({ now }),
   ]);
-  return buildOverviewReport({
+  const report = buildOverviewReport({
     now,
     alerts,
     items,
@@ -335,6 +344,75 @@ export async function buildOverview(
     gold,
     sp500,
   });
+  const observations: MacroObservationInput[] = [
+    ...getFredOvxObservations(),
+    ...getGprDailyObservations(),
+    ...getGoldPriceObservations(),
+    ...getFredSp500Observations(),
+  ];
+  if (sentiment) {
+    observations.push({
+      source: "coingecko",
+      asOf: sentiment.asOf,
+      value: sentiment.score,
+      aux: { up: sentiment.up, down: sentiment.down },
+    });
+  }
+  if (fearGreed) {
+    observations.push({
+      source: "cmc",
+      asOf: fearGreed.asOf,
+      value: fearGreed.value,
+      aux: { classification: fearGreed.classification, greed: fearGreed.greed, fear: fearGreed.fear },
+    });
+  }
+  if (ovx) {
+    observations.push({
+      source: "ovx",
+      asOf: ovx.asOf,
+      value: ovx.value,
+      aux: { classification: ovx.classification, stress: ovx.stress, calm: ovx.calm },
+    });
+  }
+  if (gpr) {
+    observations.push({
+      source: "gpr",
+      asOf: gpr.asOf,
+      value: gpr.value,
+      aux: { classification: gpr.classification, stress: gpr.stress, calm: gpr.calm },
+    });
+  }
+  if (gold) {
+    observations.push({
+      source: "gold",
+      asOf: gold.asOf,
+      value: gold.value,
+      aux: { symbol: gold.symbol, changePct: gold.changePct },
+    });
+  }
+  if (sp500) {
+    observations.push({
+      source: "sp500",
+      asOf: sp500.asOf,
+      value: sp500.value,
+      aux: { seriesId: sp500.seriesId, changePct: sp500.changePct },
+    });
+  }
+  if (report.mix.score !== null) {
+    observations.push({
+      source: "news_mix",
+      asOf: now,
+      value: report.mix.score,
+      aux: { bull: report.mix.bull, bear: report.mix.bear, neutral: report.mix.neutral },
+    });
+  }
+  try {
+    await persistMacroObservations(pool, observations);
+    const history = await loadMacroHistory(pool, now);
+    return { ...report, macroIndex: buildMacroIndex(history) };
+  } catch {
+    return report;
+  }
 }
 
 export function serializeOverview(report: OverviewReport) {
@@ -354,5 +432,6 @@ export function serializeOverview(report: OverviewReport) {
     gpr: report.gpr,
     gold: report.gold,
     sp500: report.sp500,
+    macroIndex: report.macroIndex,
   };
 }
