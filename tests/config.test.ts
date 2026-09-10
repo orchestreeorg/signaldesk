@@ -24,7 +24,7 @@ describe("loadConfig", () => {
     expect(config.TELEGRAM_DRY_RUN).toBe(true);
     expect(config.NEWS_LIVE).toBe(false);
     expect(config.TAPE_LIVE).toBe(false);
-    expect(config.BTC_LARGE_TX_BTC).toBe(1000);
+    expect(config.BTC_LARGE_TX_BTC).toBe(5000);
     expect(config.MEMPOOL_API_BASE).toBe("https://mempool.space/api");
   });
 

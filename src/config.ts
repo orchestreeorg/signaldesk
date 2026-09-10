@@ -35,7 +35,7 @@ const envSchema = z.object({
   LLM_BASE_URL: z.string().default("https://api.openai.com/v1"),
   LLM_MODEL: z.string().default("gpt-4o-mini"),
   BTC_LARGE_TX_BTC: z.preprocess(
-    (value) => (value === undefined || value === "" ? 1000 : value),
+    (value) => (value === undefined || value === "" ? 5000 : value),
     z.coerce.number().finite().gte(1).lte(21_000_000),
   ),
   MEMPOOL_API_BASE: z.preprocess(

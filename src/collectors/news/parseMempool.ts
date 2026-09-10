@@ -4,7 +4,7 @@ import type { NewsSource } from "./sources.js";
 import type { RawItem } from "./types.js";
 
 export const SATS_PER_BTC = 100_000_000;
-export const DEFAULT_BTC_LARGE_TX_BTC = 1000;
+export const DEFAULT_BTC_LARGE_TX_BTC = 5000;
 export const DEFAULT_MEMPOOL_API_BASE = "https://mempool.space/api";
 export const MEMPOOL_MAX_BLOCKS = 3;
 export const MEMPOOL_ITEM_CAP = 5;
