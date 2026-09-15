@@ -395,7 +395,7 @@ export async function buildOverview(
       source: "sp500",
       asOf: sp500.asOf,
       value: sp500.value,
-      aux: { seriesId: sp500.seriesId, changePct: sp500.changePct },
+      aux: { symbol: sp500.symbol, changePct: sp500.changePct },
     });
   }
   if (report.mix.score !== null) {

@@ -2,12 +2,13 @@ import type { MacroObservationInput } from "./macroObservations.js";
 
 export const FRED_SP500_TTL_MS = 15 * 60_000;
 export const FRED_SP500_ERROR_TTL_MS = 60_000;
-export const FRED_SP500_SERIES_ID = "SP500";
-export const DEFAULT_FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations";
+export const YAHOO_SP500_SYMBOL = "^GSPC";
+export const DEFAULT_YAHOO_SP500_URL =
+  "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1mo";
 
 export type OverviewSp500 = {
-  source: "fred";
-  seriesId: typeof FRED_SP500_SERIES_ID;
+  source: "yahoo";
+  symbol: typeof YAHOO_SP500_SYMBOL;
   value: number;
   changePct: number | null;
   asOf: string;
@@ -27,62 +28,54 @@ export function resetFredSp500Cache(): void {
   observations = [];
 }
 
-function observationAsOf(date: string): string {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return `${date}T00:00:00.000Z`;
+function asOfFromUnix(seconds: unknown): string {
+  const n = Number(seconds);
+  if (Number.isFinite(n) && n > 0) {
+    return new Date(n * 1000).toISOString();
   }
-  const parsed = new Date(date);
-  return Number.isNaN(parsed.getTime()) ? date : parsed.toISOString();
+  return new Date(0).toISOString();
 }
 
-function numericObservations(raw: unknown): { date: string; value: number }[] {
+function changePct(value: number, prior: number): number | null {
+  if (!Number.isFinite(prior) || prior <= 0) {
+    return null;
+  }
+  return Number((((value - prior) / prior) * 100).toFixed(2));
+}
+
+function closesFromChart(raw: unknown): { t: number; v: number }[] {
   if (!raw || typeof raw !== "object") {
     return [];
   }
-  const observations = (raw as { observations?: unknown }).observations;
-  if (!Array.isArray(observations)) {
+  const result = (raw as { chart?: { result?: unknown } }).chart?.result;
+  const row = Array.isArray(result) ? result[0] : null;
+  if (!row || typeof row !== "object") {
     return [];
   }
-  const rows: { date: string; value: number }[] = [];
-  for (const row of observations) {
-    if (!row || typeof row !== "object") {
-      continue;
-    }
-    const item = row as { date?: unknown; value?: unknown };
-    const date = typeof item.date === "string" ? item.date : "";
-    const value = Number(item.value);
-    if (!date || !Number.isFinite(value) || value <= 0) {
-      continue;
-    }
-    rows.push({ date, value });
-  }
-  return rows;
-}
-
-export function parseFredSp500(raw: unknown): OverviewSp500 | null {
-  const rows = numericObservations(raw);
-  const latest = rows[0];
-  if (!latest) {
-    return null;
-  }
-  const prior = rows[1]?.value;
-  const changePct =
-    prior && prior > 0 ? Number((((latest.value - prior) / prior) * 100).toFixed(2)) : null;
-  return {
-    source: "fred",
-    seriesId: FRED_SP500_SERIES_ID,
-    value: Number(latest.value.toFixed(2)),
-    changePct,
-    asOf: observationAsOf(latest.date),
+  const item = row as {
+    timestamp?: unknown;
+    indicators?: { quote?: Array<{ close?: unknown }> };
   };
+  const stamps = Array.isArray(item.timestamp) ? item.timestamp : [];
+  const closes = item.indicators?.quote?.[0]?.close;
+  const values = Array.isArray(closes) ? closes : [];
+  const points: { t: number; v: number }[] = [];
+  for (let i = 0; i < Math.min(stamps.length, values.length); i += 1) {
+    const t = Number(stamps[i]);
+    const v = Number(values[i]);
+    if (Number.isFinite(t) && Number.isFinite(v) && v > 0) {
+      points.push({ t, v });
+    }
+  }
+  return points;
 }
 
-export function parseFredSp500Observations(raw: unknown): MacroObservationInput[] {
-  return numericObservations(raw).map((row) => ({
+export function parseYahooSp500Observations(raw: unknown): MacroObservationInput[] {
+  return closesFromChart(raw).map((point) => ({
     source: "sp500",
-    asOf: observationAsOf(row.date),
-    value: Number(row.value.toFixed(2)),
-    aux: { seriesId: FRED_SP500_SERIES_ID },
+    asOf: asOfFromUnix(point.t),
+    value: Number(point.v.toFixed(2)),
+    aux: { symbol: YAHOO_SP500_SYMBOL },
   }));
 }
 
@@ -90,40 +83,53 @@ export function getFredSp500Observations(): MacroObservationInput[] {
   return observations;
 }
 
-export function fredSp500Url(apiKey: string, seriesId = FRED_SP500_SERIES_ID): string {
-  const url = new URL(DEFAULT_FRED_OBSERVATIONS_URL);
-  url.searchParams.set("series_id", seriesId);
-  url.searchParams.set("api_key", apiKey);
-  url.searchParams.set("file_type", "json");
-  url.searchParams.set("sort_order", "desc");
-  url.searchParams.set("limit", "60");
-  return url.toString();
+export function parseYahooSp500(raw: unknown): OverviewSp500 | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const result = (raw as { chart?: { result?: unknown } }).chart?.result;
+  const row = Array.isArray(result) ? result[0] : null;
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  const meta = (row as { meta?: Record<string, unknown> }).meta ?? {};
+  const live = Number(meta.regularMarketPrice);
+  const prior = Number(meta.chartPreviousClose);
+  const points = closesFromChart(raw);
+  const last = points.at(-1);
+  const prevClose = points.at(-2);
+  const value = Number.isFinite(live) && live > 0 ? live : last?.v;
+  if (!value || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  const baseline = Number.isFinite(prior) && prior > 0 ? prior : prevClose?.v;
+  const asOfSeconds = meta.regularMarketTime ?? last?.t;
+  return {
+    source: "yahoo",
+    symbol: YAHOO_SP500_SYMBOL,
+    value: Number(value.toFixed(2)),
+    changePct: baseline ? changePct(value, baseline) : null,
+    asOf: asOfFromUnix(asOfSeconds),
+  };
 }
 
 export async function loadFredSp500(opts?: {
   fetchImpl?: typeof fetch;
   now?: Date;
-  apiKey?: string;
   url?: string;
 }): Promise<OverviewSp500 | null> {
   const now = opts?.now ?? new Date();
   if (cache && now.getTime() - cache.at < cache.ttlMs) {
     return cache.value;
   }
-  const apiKey = opts?.apiKey ?? process.env["FRED_API_KEY"] ?? "";
-  if (!apiKey) {
-    observations = [];
-    cache = { at: now.getTime(), value: null, ttlMs: FRED_SP500_ERROR_TTL_MS };
-    return null;
-  }
   const fetchImpl = opts?.fetchImpl ?? fetch;
   try {
-    const response = await fetchImpl(opts?.url ?? fredSp500Url(apiKey), {
+    const response = await fetchImpl(opts?.url ?? DEFAULT_YAHOO_SP500_URL, {
       headers: {
         accept: "application/json",
-        "user-agent": "signal-desk/0.0.1",
+        "user-agent": "Mozilla/5.0 (compatible; signal-desk/0.0.1)",
       },
-      signal: AbortSignal.timeout(5_000),
+      signal: AbortSignal.timeout(8_000),
     });
     if (!response.ok) {
       observations = [];
@@ -131,8 +137,8 @@ export async function loadFredSp500(opts?: {
       return null;
     }
     const raw = await response.json();
-    observations = parseFredSp500Observations(raw);
-    const value = parseFredSp500(raw);
+    observations = parseYahooSp500Observations(raw);
+    const value = parseYahooSp500(raw);
     cache = {
       at: now.getTime(),
       value,

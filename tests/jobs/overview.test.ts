@@ -217,15 +217,15 @@ describe("overview mempool and tabs", () => {
         asOf: now.toISOString(),
       },
       sp500: {
-        source: "fred",
-        seriesId: "SP500",
+        source: "yahoo",
+        symbol: "^GSPC",
         value: 6500.25,
         changePct: 0.78,
         asOf: now.toISOString(),
       },
     });
     expect(report.gold?.source).toBe("yahoo");
-    expect(report.sp500?.source).toBe("fred");
+    expect(report.sp500?.source).toBe("yahoo");
     expect(report.gold?.value).toBe(4435.2);
     expect(report.sp500?.changePct).toBe(0.78);
   });
@@ -282,7 +282,7 @@ describe("overview isolation", () => {
     expect(route).not.toMatch(/grammy|sendAlert|sendDigest/i);
     expect(page).not.toMatch(/dangerouslySetInnerHTML/);
     expect(fuse).not.toMatch(
-      /coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed|loadFredOvx|OVXCLS|loadGprDaily|loadGoldPrice|loadFredSp500|GPRD|GC=F/i,
+      /coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed|loadFredOvx|OVXCLS|loadGprDaily|loadGoldPrice|loadFredSp500|parseYahooSp500|\^GSPC|GPRD|GC=F/i,
     );
   });
 

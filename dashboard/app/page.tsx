@@ -55,7 +55,7 @@ type OverviewPayload = {
   ovx: { source: string; value: number; classification: string; stress: number; calm: number; asOf: string } | null;
   gpr: { source: string; value: number; classification: string; stress: number; calm: number; asOf: string } | null;
   gold: { source: string; symbol: string; value: number; changePct: number | null; asOf: string } | null;
-  sp500: { source: string; seriesId: string; value: number; changePct: number | null; asOf: string } | null;
+  sp500: { source: string; symbol: string; value: number; changePct: number | null; asOf: string } | null;
   macroIndex: MacroIndex | null;
   error?: string;
 };
@@ -419,12 +419,12 @@ export default function OverviewPage() {
                     <div className={`metric ${signedClass(data.sp500.changePct)}`}>{formatIndex(data.sp500.value)}</div>
                     <div className={`quote-delta ${signedClass(data.sp500.changePct)}`}>{formatPct(data.sp500.changePct)}</div>
                   </div>
-                  <div className="meta">FRED SP500 · not fusion</div>
+                  <div className="meta">Yahoo ^GSPC · not fusion</div>
                 </>
               ) : (
                 <>
                   <div className="metric">n/a</div>
-                  <div className="meta">FRED SP500 · unavailable (needs FRED_API_KEY)</div>
+                  <div className="meta">S&amp;P 500 · unavailable</div>
                 </>
               )}
             </article>
