@@ -371,7 +371,7 @@ export async function buildOverview(
       source: "ovx",
       asOf: ovx.asOf,
       value: ovx.value,
-      aux: { classification: ovx.classification, stress: ovx.stress, calm: ovx.calm },
+      aux: { symbol: ovx.symbol, classification: ovx.classification, stress: ovx.stress, calm: ovx.calm },
     });
   }
   if (gpr) {

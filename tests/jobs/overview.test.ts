@@ -167,14 +167,14 @@ describe("overview mempool and tabs", () => {
     expect(report.fearGreed?.classification).toBe("Greed");
   });
 
-  it("passes FRED OVX through without using it as tape", () => {
+  it("passes Yahoo OVX through without using it as tape", () => {
     const report = buildOverviewReport({
       now,
       alerts: [],
       items: mixItems,
       ovx: {
-        source: "fred",
-        seriesId: "OVXCLS",
+        source: "yahoo",
+        symbol: "^OVX",
         value: 32.14,
         classification: "Normal",
         stress: 40.175,
@@ -182,7 +182,7 @@ describe("overview mempool and tabs", () => {
         asOf: now.toISOString(),
       },
     });
-    expect(report.ovx?.source).toBe("fred");
+    expect(report.ovx?.source).toBe("yahoo");
     expect(report.ovx?.classification).toBe("Normal");
   });
 
@@ -282,7 +282,7 @@ describe("overview isolation", () => {
     expect(route).not.toMatch(/grammy|sendAlert|sendDigest/i);
     expect(page).not.toMatch(/dangerouslySetInnerHTML/);
     expect(fuse).not.toMatch(
-      /coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed|loadFredOvx|OVXCLS|loadGprDaily|loadGoldPrice|loadFredSp500|parseYahooSp500|\^GSPC|GPRD|GC=F/i,
+      /coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed|loadFredOvx|parseYahooOvx|\^OVX|loadGprDaily|loadGoldPrice|loadFredSp500|parseYahooSp500|\^GSPC|GPRD|GC=F/i,
     );
   });
 
