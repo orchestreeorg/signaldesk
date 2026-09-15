@@ -52,7 +52,7 @@ type OverviewPayload = {
   marks: { BTC?: number; ETH?: number } | null;
   sentiment: { source: string; asset: string; up: number; down: number; score: number; label: string; asOf: string } | null;
   fearGreed: { source: string; value: number; classification: string; greed: number; fear: number; asOf: string } | null;
-  ovx: { source: string; value: number; classification: string; stress: number; calm: number; asOf: string } | null;
+  ovx: { source: string; symbol: string; value: number; classification: string; stress: number; calm: number; asOf: string } | null;
   gpr: { source: string; value: number; classification: string; stress: number; calm: number; asOf: string } | null;
   gold: { source: string; symbol: string; value: number; changePct: number | null; asOf: string } | null;
   sp500: { source: string; symbol: string; value: number; changePct: number | null; asOf: string } | null;
@@ -352,12 +352,12 @@ export default function OverviewPage() {
                     </span>
                     <span>{data.ovx.classification}</span>
                   </div>
-                  <div className="meta">FRED OVX · oil implied vol · not fusion</div>
+                  <div className="meta">Yahoo ^OVX · oil implied vol · not fusion</div>
                 </>
               ) : (
                 <>
                   <div className="metric">n/a</div>
-                  <div className="meta">FRED OVX · unavailable (needs FRED_API_KEY)</div>
+                  <div className="meta">Oil vol · unavailable</div>
                 </>
               )}
             </article>
