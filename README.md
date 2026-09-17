@@ -30,7 +30,7 @@ Postgres is on **5433** (container 5432) so it does not collide with Homebrew on
 2. Set `TELEGRAM_DRY_RUN=0`.
 3. `pnpm smoke` sends one dummy FLASH, then one DIGEST.
 4. `pnpm bot` long-polls commands (`/start` `/watch` `/mute` …).
-5. `pnpm worker` registers DIGEST at **00:00 / 08:00 / 16:00 UTC**.
+5. `pnpm worker` registers DIGEST at **00:00 / 08:00 / 16:00 ART**.
 
 `.env` is gitignored. Do not commit tokens.
 

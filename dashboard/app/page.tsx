@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { dashHeaders } from "@/lib/client-auth";
 import { AppShell, StatusChip } from "@/lib/nav";
 import type { OpsHeartbeat } from "@/lib/types";
+import { formatDeskClock } from "@/lib/tz";
 
 type Tone = "BULLISH" | "BEARISH" | "NEUTRAL";
 type ToneTab = "ALL" | Tone;
@@ -463,7 +464,7 @@ export default function OverviewPage() {
               </>
             )}
           </section>
-          <p className="note">{notice || (data ? `Updated ${data.now.slice(11, 16)} UTC` : "Loading overview…")}</p>
+          <p className="note">{notice || (data ? `Updated ${formatDeskClock(data.now)}` : "Loading overview…")}</p>
         </>
       )}
     </AppShell>
@@ -533,7 +534,7 @@ function BtcBars(props: { rows: LargeBtc[] }) {
         const btc = row.btc ?? 0;
         const height = `${Math.max(8, (btc / max) * 100)}%`;
         const label = formatBtc(btc);
-        const when = row.publishedAt.slice(11, 16);
+        const when = formatDeskClock(row.publishedAt);
         const inner = (
           <>
             <span className="btc-amt">{btc > 0 ? btc.toLocaleString("en-US", { maximumFractionDigits: 1 }) : "—"}</span>
@@ -545,13 +546,13 @@ function BtcBars(props: { rows: LargeBtc[] }) {
         );
         if (row.href) {
           return (
-            <a key={row.url} className="btc-col" href={row.href} target="_blank" rel="noreferrer" title={`${label} at ${when} UTC`}>
+            <a key={row.url} className="btc-col" href={row.href} target="_blank" rel="noreferrer" title={`${label} at ${when}`}>
               {inner}
             </a>
           );
         }
         return (
-          <div key={row.url} className="btc-col" title={`${label} at ${when} UTC`}>
+          <div key={row.url} className="btc-col" title={`${label} at ${when}`}>
             {inner}
           </div>
         );
@@ -561,7 +562,7 @@ function BtcBars(props: { rows: LargeBtc[] }) {
 }
 
 function HeadlineRow(props: { row: Headline }) {
-  const time = props.row.publishedAt.slice(11, 16);
+  const time = formatDeskClock(props.row.publishedAt);
   const title = props.row.href ? (
     <a href={props.row.href} target="_blank" rel="noreferrer">
       {props.row.title}

@@ -332,7 +332,7 @@ export async function startWorker(): Promise<{
   const collectors = listCollectors().map((collector) => collector.name);
   ops("worker", "boot", `collectors=${collectors.join(",")}`, { data: { collectors } });
   ops("worker", "boot", `queues=${QUEUE_NAMES.join(",")}`);
-  ops("worker", "boot", `schedulers=${schedulers.join(",")} (DIGEST 00:00/08:00/16:00 UTC; INDEX hourly)`);
+  ops("worker", "boot", `schedulers=${schedulers.join(",")} (DIGEST 00:00/08:00/16:00 ART; INDEX hourly)`);
   ops("worker", "boot", `news_live=${config.NEWS_LIVE ? "1" : "0"} tape_live=${tapeEnabled ? "1" : "0"} telegram_dry_run=${config.TELEGRAM_DRY_RUN ? "1" : "0"}`);
   ops("news", "wait", `Waiting for first news cron. ${formatWait(nextNewsAt())}`, { level: "wait" });
   ops("tape", "wait", `Waiting for first tape cron. ${formatWait(nextTapeAt())}`, { level: "wait" });
