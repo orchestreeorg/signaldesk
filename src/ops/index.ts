@@ -1,4 +1,4 @@
-export { formatWait, nextDigestAt, nextNewsAt, nextTapeAt } from "./clock.js";
+export { formatWait, nextDigestAt, nextMacroAt, nextNewsAt, nextTapeAt } from "./clock.js";
 export { startOpsBus } from "./bus.js";
 export { formatOpsLine, ops, setOpsSink } from "./log.js";
 export {

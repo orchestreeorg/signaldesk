@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatWait, nextDigestAt, nextNewsAt, nextTapeAt } from "../../src/ops/clock.js";
+import { formatWait, nextDigestAt, nextMacroAt, nextNewsAt, nextTapeAt } from "../../src/ops/clock.js";
 
 describe("ops clock", () => {
   it("aligns news to the next 5-minute UTC slot", () => {
@@ -15,6 +15,11 @@ describe("ops clock", () => {
   it("picks the next DIGEST hour", () => {
     expect(nextDigestAt(new Date("2026-09-08T07:00:00.000Z")).toISOString()).toBe("2026-09-08T08:00:00.000Z");
     expect(nextDigestAt(new Date("2026-09-08T16:00:01.000Z")).toISOString()).toBe("2026-09-09T00:00:00.000Z");
+  });
+
+  it("aligns the weekly index to the next UTC hour", () => {
+    expect(nextMacroAt(new Date("2026-09-08T22:02:10.000Z")).toISOString()).toBe("2026-09-08T23:00:00.000Z");
+    expect(nextMacroAt(new Date("2026-09-08T23:00:00.000Z")).toISOString()).toBe("2026-09-09T00:00:00.000Z");
   });
 
   it("formats a wait line", () => {

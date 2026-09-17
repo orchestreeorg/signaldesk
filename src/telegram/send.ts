@@ -1,7 +1,8 @@
 import { Bot } from "grammy";
 import type { AlertKind } from "../domain/index.js";
-import { renderAlert, renderDigest, renderHeadline } from "./html.js";
+import { renderAlert, renderDigest, renderHeadline, renderMacroIndex } from "./html.js";
 import type { DigestReport } from "../jobs/digest.js";
+import type { OverviewMacroIndex } from "../jobs/macroScale.js";
 import { ChatStore } from "./store.js";
 import { DEFAULT_DESK_SETTINGS } from "../desk/defaults.js";
 import type { DeskSettings } from "../desk/types.js";
@@ -19,6 +20,10 @@ export type SendResult =
 export type HeadlineSendResult =
   | { sent: true; html: string }
   | { sent: false; html: string; reason: "dry-run" | "filtered" };
+
+export type MacroIndexSendResult =
+  | { sent: true; html: string }
+  | { sent: false; html: string; reason: "dry-run" };
 
 export function createLogTransport(): TelegramTransport {
   return {
@@ -84,6 +89,29 @@ export async function sendDigest(
   if (!allowed.ok) {
     return { sent: false, html, reason: allowed.reason };
   }
+  await transport.send(input.chatId, html);
+  if (input.dryRun) {
+    return { sent: false, html, reason: "dry-run" };
+  }
+  return { sent: true, html };
+}
+
+/**
+ * Hourly weekly risk-on index. Not an AlertKind.
+ * Mute does not block it (mute still blocks FLASH via sendAlert).
+ * The 4 FLASH/day cap does not apply.
+ */
+export async function sendMacroIndex(
+  transport: TelegramTransport,
+  input: {
+    chatId: string;
+    html?: string;
+    index?: OverviewMacroIndex | null;
+    dryRun: boolean;
+    now?: Date;
+  },
+): Promise<MacroIndexSendResult> {
+  const html = input.html ?? renderMacroIndex(input.index ?? null, input.now ?? new Date());
   await transport.send(input.chatId, html);
   if (input.dryRun) {
     return { sent: false, html, reason: "dry-run" };

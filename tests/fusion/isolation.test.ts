@@ -10,6 +10,7 @@ describe("fusion isolation", () => {
     const fuse = readFileSync(join(here, "../../src/fusion/fuse.ts"), "utf8");
     const policy = readFileSync(join(here, "../../src/policy/emit.ts"), "utf8");
     expect(fuse).not.toMatch(/sendAlert|grammy|telegram/);
+    expect(fuse).not.toMatch(/sendMacroIndex|emitMacroIndex|macroHourly/);
     expect(policy).toMatch(/sendAlert/);
   });
 });

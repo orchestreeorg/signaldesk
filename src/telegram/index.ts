@@ -1,6 +1,6 @@
 export { createTelegramBot, startTelegram } from "./bot.js";
 export { handleCommand } from "./commands.js";
-export { renderAlert, renderDigest, renderHeadline } from "./html.js";
+export { renderAlert, renderDigest, renderHeadline, renderMacroIndex } from "./html.js";
 export {
   createApiTransport,
   createLogTransport,
@@ -8,7 +8,9 @@ export {
   sendDigest,
   sendHeadline,
   sendHeadlines,
+  sendMacroIndex,
   type HeadlineSendResult,
+  type MacroIndexSendResult,
   type SendResult,
   type TelegramTransport,
 } from "./send.js";

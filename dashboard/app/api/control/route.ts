@@ -14,6 +14,7 @@ const ACTIONS = new Set<OpsControlAction>([
   "run-news",
   "run-tape",
   "run-digest",
+  "run-macro",
 ]);
 
 export async function POST(request: NextRequest) {

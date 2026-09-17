@@ -20,9 +20,10 @@ import { createDb, createPool } from "../db/client.js";
 import { upsertEvent } from "../db/events.js";
 import { buildDigest } from "../jobs/digest.js";
 import { quietSnapshot, runNewsDesk } from "../jobs/newsDesk.js";
+import { emitMacroIndex } from "../jobs/macroHourly.js";
 import { fillOutcomes } from "../jobs/outcomes.js";
-import { registerSchedules } from "../jobs/schedule.js";
-import { formatWait, nextDigestAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
+import { isMacroJob, registerSchedules } from "../jobs/schedule.js";
+import { formatWait, nextDigestAt, nextMacroAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
 import { Policy } from "../policy/index.js";
 import {
   closeQueues,
@@ -212,7 +213,41 @@ export async function startWorker(): Promise<{
         await pool.end();
       }
     }, jobOpts),
-    new Worker("digest", async () => {
+    new Worker("digest", async (job) => {
+      if (isMacroJob(job)) {
+        if (paused) {
+          ops("macro", "paused", "Weekly index skipped: worker is paused", { level: "wait" });
+          return;
+        }
+        const chatId = config.TELEGRAM_CHAT_ID;
+        if (!chatId) {
+          ops("macro", "skip", "No TELEGRAM_CHAT_ID; weekly index not sent", { level: "skip" });
+          return;
+        }
+        const pool = createPool(config.DATABASE_URL);
+        try {
+          const now = new Date();
+          const send = await emitMacroIndex(pool, transport, {
+            chatId,
+            dryRun: config.TELEGRAM_DRY_RUN,
+            now,
+          });
+          ops("macro", "emit", send.sent ? "Weekly index sent" : `Weekly index ${send.reason}`, {
+            level: send.sent || send.reason === "dry-run" ? "ok" : "skip",
+            data: {
+              score: send.index?.score ?? null,
+              label: send.index?.label ?? null,
+              conflicted: send.index?.conflicted ?? null,
+              legs: send.index?.legs.length ?? 0,
+              dryRun: config.TELEGRAM_DRY_RUN,
+            },
+          });
+        } finally {
+          await pool.end();
+        }
+        ops("macro", "wait", `Next weekly index ${formatWait(nextMacroAt())}`, { level: "wait" });
+        return;
+      }
       if (paused) {
         ops("digest", "paused", "DIGEST skipped: worker is paused", { level: "wait" });
         return;
@@ -285,6 +320,9 @@ export async function startWorker(): Promise<{
     if (command.action === "run-digest") {
       void queues.digest.add("digest-now", { kind: "digest" });
     }
+    if (command.action === "run-macro") {
+      void queues.digest.add("macro-now", { kind: "MACRO" });
+    }
     if (command.action === "stop") {
       void runtimeStop().finally(() => process.exit(0));
     }
@@ -294,11 +332,12 @@ export async function startWorker(): Promise<{
   const collectors = listCollectors().map((collector) => collector.name);
   ops("worker", "boot", `collectors=${collectors.join(",")}`, { data: { collectors } });
   ops("worker", "boot", `queues=${QUEUE_NAMES.join(",")}`);
-  ops("worker", "boot", `schedulers=${schedulers.join(",")} (DIGEST 00:00/08:00/16:00 UTC)`);
+  ops("worker", "boot", `schedulers=${schedulers.join(",")} (DIGEST 00:00/08:00/16:00 UTC; INDEX hourly)`);
   ops("worker", "boot", `news_live=${config.NEWS_LIVE ? "1" : "0"} tape_live=${tapeEnabled ? "1" : "0"} telegram_dry_run=${config.TELEGRAM_DRY_RUN ? "1" : "0"}`);
   ops("news", "wait", `Waiting for first news cron. ${formatWait(nextNewsAt())}`, { level: "wait" });
   ops("tape", "wait", `Waiting for first tape cron. ${formatWait(nextTapeAt())}`, { level: "wait" });
   ops("digest", "wait", `Waiting for DIGEST. ${formatWait(nextDigestAt())}`, { level: "wait" });
+  ops("macro", "wait", `Waiting for weekly index. ${formatWait(nextMacroAt())}`, { level: "wait" });
   await beat();
   const heartbeatTimer = setInterval(() => {
     void beat();

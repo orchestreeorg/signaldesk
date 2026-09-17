@@ -8,6 +8,13 @@ export const NEWS_CRON = "*/5 * * * *";
 export const NEWS_SCHEDULER_ID = "news-poll";
 export const TAPE_CRON = "* * * * *";
 export const TAPE_SCHEDULER_ID = "tape-oi";
+export const MACRO_CRON = "0 * * * *";
+export const MACRO_SCHEDULER_ID = "macro-hourly";
+
+export function isMacroJob(job: { name?: string; data?: { kind?: string } }): boolean {
+  const kind = job.data?.kind;
+  return job.name === "macro" || job.name === "macro-now" || kind === "MACRO" || kind === "macro";
+}
 
 export function dummyAlert(kind: "FLASH" | "DIGEST"): OutgoingAlert {
   return {
@@ -30,6 +37,11 @@ export async function registerSchedules(queues: QueueMap): Promise<string[]> {
     { pattern: DIGEST_CRON, tz: "UTC" },
     { name: "digest", data: { kind: "DIGEST" } },
   );
+  await queues.digest.upsertJobScheduler(
+    MACRO_SCHEDULER_ID,
+    { pattern: MACRO_CRON, tz: "UTC" },
+    { name: "macro", data: { kind: "MACRO" } },
+  );
   await queues.news.upsertJobScheduler(
     NEWS_SCHEDULER_ID,
     { pattern: NEWS_CRON, tz: "UTC" },
@@ -40,5 +52,5 @@ export async function registerSchedules(queues: QueueMap): Promise<string[]> {
     { pattern: TAPE_CRON, tz: "UTC" },
     { name: "tape", data: { kind: "tape" } },
   );
-  return [DIGEST_SCHEDULER_ID, NEWS_SCHEDULER_ID, TAPE_SCHEDULER_ID];
+  return [DIGEST_SCHEDULER_ID, MACRO_SCHEDULER_ID, NEWS_SCHEDULER_ID, TAPE_SCHEDULER_ID];
 }
