@@ -2,6 +2,7 @@ import { DIGEST_HOURS_UTC } from "../jobs/schedule.js";
 
 const NEWS_MS = 5 * 60 * 1000;
 const TAPE_MS = 60 * 1000;
+const MACRO_MS = 60 * 60 * 1000;
 
 export function nextAlignedUtc(periodMs: number, now = new Date()): Date {
   const t = now.getTime();
@@ -27,6 +28,10 @@ export function nextDigestAt(now = new Date()): Date {
     }
   }
   return new Date(Date.UTC(year, month, day + 1, DIGEST_HOURS_UTC[0], 0, 0));
+}
+
+export function nextMacroAt(now = new Date()): Date {
+  return nextAlignedUtc(MACRO_MS, now);
 }
 
 export function formatWait(next: Date, now = new Date()): string {

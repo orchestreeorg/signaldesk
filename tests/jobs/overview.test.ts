@@ -270,16 +270,16 @@ describe("overview isolation", () => {
     const route = readFileSync(join(here, "../../dashboard/app/api/overview/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/page.tsx"), "utf8");
     const fuse = readFileSync(join(here, "../../src/fusion/fuse.ts"), "utf8");
-    expect(src).not.toMatch(/sendAlert|sendDigest|grammy/i);
-    expect(sentiment).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
-    expect(fearGreed).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
-    expect(ovx).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
-    expect(gpr).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
-    expect(gold).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
-    expect(sp500).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
-    expect(macroScale).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
-    expect(macroObservations).not.toMatch(/sendAlert|sendDigest|grammy|tapePolarity/i);
-    expect(route).not.toMatch(/grammy|sendAlert|sendDigest/i);
+    expect(src).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy/i);
+    expect(sentiment).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
+    expect(fearGreed).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
+    expect(ovx).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
+    expect(gpr).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
+    expect(gold).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
+    expect(sp500).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
+    expect(macroScale).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
+    expect(macroObservations).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
+    expect(route).not.toMatch(/grammy|sendAlert|sendDigest|sendMacroIndex/i);
     expect(page).not.toMatch(/dangerouslySetInnerHTML/);
     expect(fuse).not.toMatch(
       /coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed|loadFredOvx|parseYahooOvx|\^OVX|loadGprDaily|loadGoldPrice|loadFredSp500|parseYahooSp500|\^GSPC|GPRD|GC=F/i,
@@ -290,6 +290,7 @@ describe("overview isolation", () => {
     const consolePage = readFileSync(join(here, "../../dashboard/app/console/page.tsx"), "utf8");
     expect(consolePage).toMatch(/\/api\/control/);
     expect(consolePage).toMatch(/Send digest now/);
+    expect(consolePage).toMatch(/Send index now/);
     expect(consolePage).toMatch(/href="\/console"|current="console"/);
   });
 });

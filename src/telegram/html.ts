@@ -1,6 +1,7 @@
 import type { AlertKind } from "../domain/index.js";
 import type { DigestReport } from "../jobs/digest.js";
 import { formatMixScore, formatRealized } from "../jobs/digest.js";
+import type { OverviewMacroIndex } from "../jobs/macroScale.js";
 import type { HeadlineTone } from "./tone.js";
 import type { OutgoingAlert } from "./types.js";
 
@@ -82,6 +83,33 @@ export function renderDigest(report: DigestReport): string {
   if (report.tape) {
     lines.push(`tape: ${escapeHtml(report.tape)}`);
   }
+  return lines.join("\n");
+}
+
+function utcClock(now: Date): string {
+  return `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")} UTC`;
+}
+
+/**
+ * Weekly 1–10 composite as Overview lists it: score, label, conflicted, each leg.
+ * Context only. Not fusion. Not an AlertKind.
+ */
+export function renderMacroIndex(index: OverviewMacroIndex | null, now: Date): string {
+  const head = `<b>INDEX · weekly risk-on · ${utcClock(now)}</b>`;
+  if (!index) {
+    return [head, "n/a", "Collecting enough daily macro history · not fusion"].join("\n");
+  }
+  const conflict = index.conflicted ? " · conflicted" : "";
+  const lines = [
+    head,
+    `<b>${index.score.toFixed(1)} ${escapeHtml(index.label)}</b>${conflict}`,
+  ];
+  for (const leg of index.legs) {
+    const name = `${leg.id.replace("_", " ")}${leg.inverted ? " ↕" : ""}`;
+    const value = leg.score === null ? "n/a" : leg.score.toFixed(1);
+    lines.push(`${escapeHtml(name)}  ${value}`);
+  }
+  lines.push("1 bearish · 10 bullish · weekly context · not fusion");
   return lines.join("\n");
 }
 

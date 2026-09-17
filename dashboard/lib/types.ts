@@ -21,7 +21,8 @@ export type OpsControlAction =
   | "resume"
   | "run-news"
   | "run-tape"
-  | "run-digest";
+  | "run-digest"
+  | "run-macro";
 
 export type OpsHeartbeat = {
   ts: string;
@@ -33,9 +34,11 @@ export type OpsHeartbeat = {
   nextNewsAt: string;
   nextTapeAt: string;
   nextDigestAt: string;
+  nextMacroAt: string;
   waiting: {
     news: string;
     tape: string;
     digest: string;
+    macro: string;
   };
 };

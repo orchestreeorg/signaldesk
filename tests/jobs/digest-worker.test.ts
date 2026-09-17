@@ -19,11 +19,28 @@ describe("digest job wiring", () => {
     expect(worker).toMatch(/queues\.digest\.add\("digest-now"/);
   });
 
+  it("branches MACRO jobs to the weekly index send path", () => {
+    const worker = readFileSync(join(here, "../../src/processes/worker.ts"), "utf8");
+    expect(worker).toMatch(/isMacroJob/);
+    expect(worker).toMatch(/emitMacroIndex/);
+    expect(worker).toMatch(/command\.action === "run-macro"/);
+    expect(worker).toMatch(/queues\.digest\.add\("macro-now"/);
+    expect(worker).not.toMatch(/dummyAlert/);
+  });
+
   it("accepts run-digest from the ops control API", () => {
     const route = readFileSync(join(here, "../../dashboard/app/api/control/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/console/page.tsx"), "utf8");
     expect(route).toMatch(/"run-digest"/);
     expect(page).toMatch(/action\("run-digest"\)/);
     expect(page).toMatch(/Send digest now/);
+  });
+
+  it("accepts run-macro from the ops control API", () => {
+    const route = readFileSync(join(here, "../../dashboard/app/api/control/route.ts"), "utf8");
+    const page = readFileSync(join(here, "../../dashboard/app/console/page.tsx"), "utf8");
+    expect(route).toMatch(/"run-macro"/);
+    expect(page).toMatch(/action\("run-macro"\)/);
+    expect(page).toMatch(/Send index now/);
   });
 });
