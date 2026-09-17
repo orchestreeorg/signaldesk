@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { dashHeaders } from "@/lib/client-auth";
 import { AppShell, StatusChip } from "@/lib/nav";
 import type { OpsEvent, OpsHeartbeat } from "@/lib/types";
+import { formatDeskClock, formatDeskStamp } from "@/lib/tz";
 
 type Status = {
   online: boolean;
@@ -102,8 +103,8 @@ export default function ConsolePage() {
       <section className="grid">
         <WaitCard title="News poll" wait={heartbeat?.waiting.news} at={heartbeat?.nextNewsAt} live={heartbeat?.newsLive} />
         <WaitCard title="Tape OI" wait={heartbeat?.waiting.tape} at={heartbeat?.nextTapeAt} live={heartbeat?.tapeLive} />
-        <WaitCard title="DIGEST" wait={heartbeat?.waiting.digest} at={heartbeat?.nextDigestAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="00:00 / 08:00 / 16:00 UTC" />
-        <WaitCard title="Weekly index" wait={heartbeat?.waiting.macro} at={heartbeat?.nextMacroAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="every hour UTC" />
+        <WaitCard title="DIGEST" wait={heartbeat?.waiting.digest} at={heartbeat?.nextDigestAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="00:00 / 08:00 / 16:00 ART" />
+        <WaitCard title="Weekly index" wait={heartbeat?.waiting.macro} at={heartbeat?.nextMacroAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="every hour ART" />
       </section>
 
       <div className="controls">
@@ -126,7 +127,7 @@ export default function ConsolePage() {
         ) : (
           events.map((event) => (
             <div className="row" key={`${event.seq}-${event.ts}`}>
-              <span className="ts">{event.ts.slice(11, 23)}</span>
+              <span className="ts">{formatDeskClock(event.ts, { ms: true })}</span>
               <span className={`lvl lvl-${event.level}`}>{event.level}</span>
               <span className="scope">{event.scope}</span>
               <span>{event.message}</span>
@@ -145,7 +146,7 @@ function WaitCard(props: { title: string; wait?: string; at?: string; live?: boo
       <div className="wait">{props.wait ?? "waiting for heartbeat…"}</div>
       <div className="meta">
         {props.live === undefined ? "" : props.live ? "live on" : "live off"}
-        {props.at ? ` · next ${props.at}` : ""}
+        {props.at ? ` · next ${formatDeskStamp(props.at)}` : ""}
         {props.extra ? ` · ${props.extra}` : ""}
       </div>
     </article>

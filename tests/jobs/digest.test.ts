@@ -95,7 +95,7 @@ describe("digest recap", () => {
     expect(report.calls.CONFIRM).toBe(1);
     expect(report.lastCall).toMatchObject({ kind: "FLASH", asset: "BTC", realized: -0.012 });
     const html = renderDigest(report);
-    expect(html).toContain("<b>DIGEST · last 24h · 16:00 UTC</b>");
+    expect(html).toContain("<b>DIGEST · last 24h · 13:00 ART</b>");
     expect(html).toContain("Calls: FLASH 1 · FADE 1 · CONFIRM 1 · INVALIDATE 0");
     expect(html).toContain("Last: FLASH BTC · venue pause · -1.2%");
     expect(html).toContain("News: +1.00 (1 bull / 0 bear / 0 neutral)");
@@ -157,7 +157,7 @@ describe("sendDigest", () => {
     });
     const digest = await sendDigest(store, transport, {
       chatId: "9",
-      html: "<b>DIGEST · last 24h · 16:00 UTC</b>\nCalls: none",
+      html: "<b>DIGEST · last 24h · 13:00 ART</b>\nCalls: none",
       dryRun: false,
       now: mutedAt,
     });

@@ -51,7 +51,7 @@ function recordingTransport() {
 describe("weekly index telegram", () => {
   it("lists the composite and every Overview leg", () => {
     const html = renderMacroIndex(index, now);
-    expect(html).toContain("<b>INDEX · weekly risk-on · 14:00 UTC</b>");
+    expect(html).toContain("<b>INDEX · weekly risk-on · 11:00 ART</b>");
     expect(html).toContain("<b>5.2 Neutral</b> · conflicted");
     expect(html).toContain("coingecko  7.3");
     expect(html).toContain("cmc ↕  4.5");

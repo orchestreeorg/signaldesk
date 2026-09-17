@@ -2,6 +2,7 @@ import type { AlertKind } from "../domain/index.js";
 import type { DigestReport } from "../jobs/digest.js";
 import { formatMixScore, formatRealized } from "../jobs/digest.js";
 import type { OverviewMacroIndex } from "../jobs/macroScale.js";
+import { formatDeskClock } from "../ops/tz.js";
 import type { HeadlineTone } from "./tone.js";
 import type { OutgoingAlert } from "./types.js";
 
@@ -44,10 +45,6 @@ export function renderCommand(kind: AlertKind | "REGIME" | "LAST" | "WHY" | "STA
   return `<b>${kind}</b>\n${escapeHtml(body)}`;
 }
 
-function digestHourLabel(now: Date): string {
-  return `${String(now.getUTCHours()).padStart(2, "0")}:00 UTC`;
-}
-
 function callsLine(calls: DigestReport["calls"]): string {
   const total = calls.FLASH + calls.FADE + calls.CONFIRM + calls.INVALIDATE;
   if (total === 0) {
@@ -75,7 +72,7 @@ function mixLine(mix: DigestReport["mix"]): string {
 /** 24h recap. Still DIGEST. Not the FLASH P() template. */
 export function renderDigest(report: DigestReport): string {
   const lines = [
-    `<b>DIGEST · last 24h · ${digestHourLabel(report.now)}</b>`,
+    `<b>DIGEST · last 24h · ${formatDeskClock(report.now)}</b>`,
     callsLine(report.calls),
     lastCallLine(report.lastCall),
     mixLine(report.mix),
@@ -86,16 +83,12 @@ export function renderDigest(report: DigestReport): string {
   return lines.join("\n");
 }
 
-function utcClock(now: Date): string {
-  return `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")} UTC`;
-}
-
 /**
  * Weekly 1–10 composite as Overview lists it: score, label, conflicted, each leg.
  * Context only. Not fusion. Not an AlertKind.
  */
 export function renderMacroIndex(index: OverviewMacroIndex | null, now: Date): string {
-  const head = `<b>INDEX · weekly risk-on · ${utcClock(now)}</b>`;
+  const head = `<b>INDEX · weekly risk-on · ${formatDeskClock(now)}</b>`;
   if (!index) {
     return [head, "n/a", "Collecting enough daily macro history · not fusion"].join("\n");
   }

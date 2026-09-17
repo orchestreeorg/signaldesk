@@ -1,4 +1,5 @@
 import type { AlertKind, Asset } from "../domain/index.js";
+import { deskDayKey } from "../ops/tz.js";
 import { FLASH_DAILY_CAP } from "./types.js";
 
 export type ChatState = {
@@ -12,8 +13,8 @@ export type SendDecision =
   | { ok: true }
   | { ok: false; reason: "muted" | "flash-cap" };
 
-function utcDay(now: Date): string {
-  return now.toISOString().slice(0, 10);
+function deskDay(now: Date): string {
+  return deskDayKey(now);
 }
 
 export class ChatStore {
@@ -65,8 +66,8 @@ export class ChatStore {
     if (!chat) {
       return 0;
     }
-    const day = utcDay(now);
-    return chat.flashAt.filter((at) => utcDay(at) === day).length;
+    const day = deskDay(now);
+    return chat.flashAt.filter((at) => deskDay(at) === day).length;
   }
 
   flashDailyCap = FLASH_DAILY_CAP;
