@@ -11,9 +11,11 @@ import {
   type NearPosition,
 } from "./nearLots.js";
 import { loadNearNews, type NearHeadline } from "./nearNews.js";
+import { loadNearPrice, type NearQuote } from "./nearPrice.js";
 
 export type NearDeskReport = {
   now: Date;
+  quote: NearQuote | null;
   position: NearPosition;
   lots: NearLot[];
   headlines: NearHeadline[];
@@ -22,6 +24,7 @@ export type NearDeskReport = {
 export function serializeNearDesk(report: NearDeskReport) {
   return {
     now: report.now.toISOString(),
+    quote: report.quote,
     position: report.position,
     lots: report.lots.map((lot) => ({
       id: lot.id,
@@ -42,9 +45,13 @@ export async function buildNearDesk(pool: pg.Pool, now = new Date()): Promise<Ne
     // Tone defaults still classify headlines if desk_settings is missing.
   }
   const lots = await listNearLots(pool);
-  const headlines = await loadNearNews({ now, settings });
+  const [headlines, quote] = await Promise.all([
+    loadNearNews({ now, settings }),
+    loadNearPrice({ now }),
+  ]);
   return {
     now,
+    quote,
     position: summarizeNearLots(lots),
     lots,
     headlines,
