@@ -13,7 +13,7 @@ export function StatusChip(props: { online: boolean; paused?: boolean; label: st
 }
 
 export function DeskNav(props: {
-  current: "overview" | "console" | "parameters";
+  current: "overview" | "near" | "console" | "parameters";
   extra?: ReactNode;
 }) {
   const link = (href: string, id: typeof props.current, label: string) => (
@@ -25,6 +25,7 @@ export function DeskNav(props: {
     <div className="top-actions">
       <nav className="nav">
         {link("/", "overview", "Overview")}
+        {link("/near", "near", "NEAR")}
         {link("/console", "console", "Console")}
         {link("/parameters", "parameters", "Parameters")}
       </nav>
@@ -35,7 +36,7 @@ export function DeskNav(props: {
 }
 
 export function AppShell(props: {
-  current: "overview" | "console" | "parameters";
+  current: "overview" | "near" | "console" | "parameters";
   title: string;
   subtitle: string;
   extra?: ReactNode;
