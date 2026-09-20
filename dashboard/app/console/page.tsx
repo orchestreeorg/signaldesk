@@ -104,6 +104,7 @@ export default function ConsolePage() {
         <WaitCard title="Tape OI" wait={heartbeat?.waiting.tape} at={heartbeat?.nextTapeAt} live={heartbeat?.tapeLive} />
         <WaitCard title="DIGEST" wait={heartbeat?.waiting.digest} at={heartbeat?.nextDigestAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="00:00 / 08:00 / 16:00 ART" />
         <WaitCard title="Weekly index" wait={heartbeat?.waiting.macro} at={heartbeat?.nextMacroAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="every hour ART" />
+        <WaitCard title="NEAR position" wait={heartbeat?.waiting.near} at={heartbeat?.nextNearAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="every hour ART · NEAR bot" />
       </section>
 
       <div className="controls">
@@ -116,6 +117,7 @@ export default function ConsolePage() {
         <button disabled={Boolean(busy) || !online} onClick={() => void action("run-tape")}>Run tape OI now</button>
         <button disabled={Boolean(busy) || !online} onClick={() => void action("run-digest")}>Send digest now</button>
         <button disabled={Boolean(busy) || !online} onClick={() => void action("run-macro")}>Send index now</button>
+        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-near")}>Send NEAR now</button>
         <button className="danger" disabled={Boolean(busy) || !online} onClick={() => void action("stop")}>Stop</button>
       </div>
       <p className="note">{busy ? `Working: ${busy}` : notice || hint}</p>

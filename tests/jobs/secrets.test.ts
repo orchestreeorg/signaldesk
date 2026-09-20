@@ -12,6 +12,8 @@ describe("secrets", () => {
     const example = readFileSync(join(root, ".env.example"), "utf8");
     expect(ignore).toMatch(/^\.env$/m);
     expect(example).toMatch(/TELEGRAM_BOT_TOKEN=$/m);
+    expect(example).toMatch(/NEAR_TELEGRAM_BOT_TOKEN=$/m);
+    expect(example).toMatch(/NEAR_TELEGRAM_CHAT_ID=$/m);
     expect(example).toMatch(/TELEGRAM_DRY_RUN=1/);
     expect(example).not.toMatch(/\d{8,}:[A-Za-z0-9_-]{20,}/);
   });

@@ -48,6 +48,7 @@ Start/Stop from the UI only works on a machine that can spawn `pnpm worker`. Ver
 - Classify: LLM extracts class/assets/polarity/novelty/credibility (mocked in tests). No probabilities.
 - Fusion + policy: FLASH / FADE / CONFIRM / INVALIDATE. Only `Policy` / `sendAlert` send those. Caps and thresholds live in `desk_settings` (defaults: 4 FLASH/day, cred 0.7). One CONFIRM per thesis.
 - Headlines: each first-seen RSS/HTML item also gets a short Telegram ping (`sendHeadline`: source · BULLISH/BEARISH/NEUTRAL, title, URL). Tone is title-only. `tone_mode` + `headline_send` decide how many pings go out (loose/all = more; strict/skip_neutral = fewer). Not an AlertKind. Dedup is `persistRawItems`. Mute does **not** block headlines. Collectors never send.
+- NEAR hourly: a dedicated bot (`NEAR_TELEGRAM_BOT_TOKEN` / `NEAR_TELEGRAM_CHAT_ID`) gets the Position box every hour ART — live $NEAR, last lots, holdings USD at that mark. Not fusion. Not NEAR news. Mute and the FLASH cap do not apply.
 - Parameters: dashboard `/parameters` edits `news_sources` and `desk_settings` in Postgres. Secrets stay in `.env`. Save applies on the next news job.
 - Outcomes: four horizon returns from `price_marks`. Missing marks stay null.
 - Priors: SQL event study when N≥20, else global. `CLASS_PRIORS` is fallback.

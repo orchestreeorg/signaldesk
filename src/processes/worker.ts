@@ -21,9 +21,10 @@ import { upsertEvent } from "../db/events.js";
 import { buildDigest } from "../jobs/digest.js";
 import { quietSnapshot, runNewsDesk } from "../jobs/newsDesk.js";
 import { emitMacroIndex } from "../jobs/macroHourly.js";
+import { emitNearPosition } from "../jobs/nearHourly.js";
 import { fillOutcomes } from "../jobs/outcomes.js";
-import { isMacroJob, registerSchedules } from "../jobs/schedule.js";
-import { formatWait, nextDigestAt, nextMacroAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
+import { isMacroJob, isNearJob, registerSchedules } from "../jobs/schedule.js";
+import { formatWait, nextDigestAt, nextMacroAt, nextNearAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
 import { Policy } from "../policy/index.js";
 import {
   closeQueues,
@@ -79,6 +80,10 @@ export async function startWorker(): Promise<{
     config.TELEGRAM_DRY_RUN || !config.TELEGRAM_BOT_TOKEN
       ? createLogTransport()
       : createApiTransport(config.TELEGRAM_BOT_TOKEN);
+  const nearTransport =
+    config.TELEGRAM_DRY_RUN || !config.NEAR_TELEGRAM_BOT_TOKEN
+      ? createLogTransport()
+      : createApiTransport(config.NEAR_TELEGRAM_BOT_TOKEN);
 
   const runNamed = async (name: string) => {
     const collector = listCollectors().find((item) => item.name === name);
@@ -214,6 +219,40 @@ export async function startWorker(): Promise<{
       }
     }, jobOpts),
     new Worker("digest", async (job) => {
+      if (isNearJob(job)) {
+        if (paused) {
+          ops("near", "paused", "NEAR position skipped: worker is paused", { level: "wait" });
+          return;
+        }
+        const chatId = config.NEAR_TELEGRAM_CHAT_ID;
+        if (!chatId) {
+          ops("near", "skip", "No NEAR_TELEGRAM_CHAT_ID; NEAR position not sent", { level: "skip" });
+          return;
+        }
+        const pool = createPool(config.DATABASE_URL);
+        try {
+          const now = new Date();
+          const send = await emitNearPosition(pool, nearTransport, {
+            chatId,
+            dryRun: config.TELEGRAM_DRY_RUN,
+            now,
+          });
+          ops("near", "emit", send.sent ? "NEAR position sent" : `NEAR position ${send.reason}`, {
+            level: send.sent || send.reason === "dry-run" ? "ok" : "skip",
+            data: {
+              tokens: send.position.tokens,
+              mark: send.quote?.value ?? null,
+              entries: send.position.entries,
+              exits: send.position.exits,
+              dryRun: config.TELEGRAM_DRY_RUN,
+            },
+          });
+        } finally {
+          await pool.end();
+        }
+        ops("near", "wait", `Next NEAR position ${formatWait(nextNearAt())}`, { level: "wait" });
+        return;
+      }
       if (isMacroJob(job)) {
         if (paused) {
           ops("macro", "paused", "Weekly index skipped: worker is paused", { level: "wait" });
@@ -323,6 +362,9 @@ export async function startWorker(): Promise<{
     if (command.action === "run-macro") {
       void queues.digest.add("macro-now", { kind: "MACRO" });
     }
+    if (command.action === "run-near") {
+      void queues.digest.add("near-now", { kind: "NEAR" });
+    }
     if (command.action === "stop") {
       void runtimeStop().finally(() => process.exit(0));
     }
@@ -332,12 +374,13 @@ export async function startWorker(): Promise<{
   const collectors = listCollectors().map((collector) => collector.name);
   ops("worker", "boot", `collectors=${collectors.join(",")}`, { data: { collectors } });
   ops("worker", "boot", `queues=${QUEUE_NAMES.join(",")}`);
-  ops("worker", "boot", `schedulers=${schedulers.join(",")} (DIGEST 00:00/08:00/16:00 ART; INDEX hourly)`);
+  ops("worker", "boot", `schedulers=${schedulers.join(",")} (DIGEST 00:00/08:00/16:00 ART; INDEX hourly; NEAR hourly)`);
   ops("worker", "boot", `news_live=${config.NEWS_LIVE ? "1" : "0"} tape_live=${tapeEnabled ? "1" : "0"} telegram_dry_run=${config.TELEGRAM_DRY_RUN ? "1" : "0"}`);
   ops("news", "wait", `Waiting for first news cron. ${formatWait(nextNewsAt())}`, { level: "wait" });
   ops("tape", "wait", `Waiting for first tape cron. ${formatWait(nextTapeAt())}`, { level: "wait" });
   ops("digest", "wait", `Waiting for DIGEST. ${formatWait(nextDigestAt())}`, { level: "wait" });
   ops("macro", "wait", `Waiting for weekly index. ${formatWait(nextMacroAt())}`, { level: "wait" });
+  ops("near", "wait", `Waiting for NEAR position. ${formatWait(nextNearAt())}`, { level: "wait" });
   await beat();
   const heartbeatTimer = setInterval(() => {
     void beat();

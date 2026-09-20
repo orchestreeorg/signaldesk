@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DIGEST_CRON, DIGEST_HOURS, MACRO_CRON, NEWS_CRON, TAPE_CRON, dummyAlert } from "../../src/jobs/schedule.js";
+import { DIGEST_CRON, DIGEST_HOURS, MACRO_CRON, NEAR_CRON, NEWS_CRON, TAPE_CRON, dummyAlert } from "../../src/jobs/schedule.js";
 import { DESK_TZ } from "../../src/ops/tz.js";
 
 describe("digest schedule", () => {
@@ -9,6 +9,7 @@ describe("digest schedule", () => {
     expect(NEWS_CRON).toBe("*/5 * * * *");
     expect(TAPE_CRON).toBe("* * * * *");
     expect(MACRO_CRON).toBe("0 * * * *");
+    expect(NEAR_CRON).toBe("0 * * * *");
     expect(DESK_TZ).toBe("America/Argentina/Buenos_Aires");
   });
 

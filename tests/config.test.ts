@@ -21,6 +21,8 @@ describe("loadConfig", () => {
     expect(config.REDIS_URL).toBe(validEnv.REDIS_URL);
     expect(config.TELEGRAM_BOT_TOKEN).toBe("");
     expect(config.TELEGRAM_CHAT_ID).toBe("");
+    expect(config.NEAR_TELEGRAM_BOT_TOKEN).toBe("");
+    expect(config.NEAR_TELEGRAM_CHAT_ID).toBe("");
     expect(config.TELEGRAM_DRY_RUN).toBe(true);
     expect(config.NEWS_LIVE).toBe(false);
     expect(config.TAPE_LIVE).toBe(false);
