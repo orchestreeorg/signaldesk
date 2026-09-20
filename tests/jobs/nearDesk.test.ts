@@ -14,6 +14,7 @@ describe("NEAR desk isolation", () => {
     const route = readFileSync(join(here, "../../dashboard/app/api/near/route.ts"), "utf8");
     const lotsRoute = readFileSync(join(here, "../../dashboard/app/api/near/lots/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/near/page.tsx"), "utf8");
+    const sim = readFileSync(join(here, "../../src/jobs/nearSimulate.ts"), "utf8");
     const fuse = readFileSync(join(here, "../../src/fusion/fuse.ts"), "utf8");
     expect(lots).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity/i);
     expect(news).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity|persistRawItems/i);
@@ -26,6 +27,8 @@ describe("NEAR desk isolation", () => {
     expect(page).not.toMatch(/dangerouslySetInnerHTML/);
     expect(page).toMatch(/Record lot/);
     expect(page).toMatch(/NEAR news/);
-    expect(fuse).not.toMatch(/nearLots|loadNearNews|nearDesk|loadNearPrice|NEAR Protocol/i);
+    expect(page).toMatch(/NearPriceSimulator|Simulate/);
+    expect(sim).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity/i);
+    expect(fuse).not.toMatch(/nearLots|loadNearNews|nearDesk|loadNearPrice|nearSimulate|NEAR Protocol/i);
   });
 });
