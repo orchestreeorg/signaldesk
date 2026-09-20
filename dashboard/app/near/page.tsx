@@ -5,6 +5,7 @@ import { dashHeaders } from "@/lib/client-auth";
 import { AppShell, StatusChip } from "@/lib/nav";
 import type { OpsHeartbeat } from "@/lib/types";
 import { formatDeskClock, formatDeskStamp } from "@/lib/tz";
+import { NearPriceSimulator } from "./NearPriceSimulator";
 
 type Tone = "BULLISH" | "BEARISH" | "NEUTRAL";
 type ToneTab = "ALL" | Tone;
@@ -256,6 +257,7 @@ export default function NearPage() {
                       : "Live $NEAR unavailable"}
                     {` · ${position?.entries ?? 0} entries · ${position?.exits ?? 0} exits`}
                   </div>
+                  <NearPriceSimulator tokens={position?.tokens ?? 0} livePrice={data.quote?.value ?? null} />
                 </>
               )}
             </article>
