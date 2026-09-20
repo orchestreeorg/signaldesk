@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { dashHeaders } from "@/lib/client-auth";
 import { AppShell, StatusChip } from "@/lib/nav";
 import type { OpsHeartbeat } from "@/lib/types";
 import { formatDeskClock } from "@/lib/tz";
@@ -73,29 +72,19 @@ export default function OverviewPage() {
   const [data, setData] = useState<OverviewPayload | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [notice, setNotice] = useState("");
-  const [locked, setLocked] = useState(false);
   const [tab, setTab] = useState<ToneTab>("ALL");
 
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
       try {
-        const [overviewRes, statusRes] = await Promise.all([
-          fetch("/api/overview", { headers: dashHeaders() }),
-          fetch("/api/status"),
-        ]);
+        const [overviewRes, statusRes] = await Promise.all([fetch("/api/overview"), fetch("/api/status")]);
         const payload = (await overviewRes.json()) as OverviewPayload;
         const nextStatus = (await statusRes.json()) as Status;
         if (cancelled) {
           return;
         }
         setStatus(nextStatus);
-        if (overviewRes.status === 401) {
-          setLocked(true);
-          setNotice("Enter DASH_SECRET on Parameters to unlock Overview.");
-          return;
-        }
-        setLocked(false);
         if (payload.error) {
           setNotice(payload.error);
           return;
@@ -144,10 +133,7 @@ export default function OverviewPage() {
         />
       }
     >
-      {locked ? (
-        <p className="note">{notice}</p>
-      ) : (
-        <>
+      <>
           <section className="overview-lead">
             <article className="card large-btc-card">
               {!data ? (
@@ -465,8 +451,7 @@ export default function OverviewPage() {
             )}
           </section>
           <p className="note">{notice || (data ? `Updated ${formatDeskClock(data.now)}` : "Loading overview…")}</p>
-        </>
-      )}
+      </>
     </AppShell>
   );
 }

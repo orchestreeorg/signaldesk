@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { dashHeaders } from "@/lib/client-auth";
 import { AppShell, StatusChip } from "@/lib/nav";
 import type { OpsHeartbeat } from "@/lib/types";
 import { formatDeskClock, formatDeskStamp } from "@/lib/tz";
@@ -97,7 +96,6 @@ export default function NearPage() {
   const [data, setData] = useState<NearPayload | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [notice, setNotice] = useState("");
-  const [locked, setLocked] = useState(false);
   const [tab, setTab] = useState<ToneTab>("ALL");
   const [busy, setBusy] = useState(false);
   const [side, setSide] = useState<Side>("entry");
@@ -106,19 +104,10 @@ export default function NearPage() {
   const [value, setValue] = useState("");
 
   const load = async () => {
-    const [nearRes, statusRes] = await Promise.all([
-      fetch("/api/near", { headers: dashHeaders() }),
-      fetch("/api/status"),
-    ]);
+    const [nearRes, statusRes] = await Promise.all([fetch("/api/near"), fetch("/api/status")]);
     const payload = (await nearRes.json()) as NearPayload;
     const nextStatus = (await statusRes.json()) as Status;
     setStatus(nextStatus);
-    if (nearRes.status === 401) {
-      setLocked(true);
-      setNotice("Enter DASH_SECRET on Parameters to unlock NEAR.");
-      return;
-    }
-    setLocked(false);
     if (payload.error) {
       setNotice(payload.error);
       return;
@@ -161,7 +150,7 @@ export default function NearPage() {
     try {
       const response = await fetch("/api/near/lots", {
         method: "POST",
-        headers: dashHeaders({ "content-type": "application/json" }),
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({
           side,
           at: new Date(at).toISOString(),
@@ -191,7 +180,6 @@ export default function NearPage() {
     try {
       const response = await fetch(`/api/near/lots?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
-        headers: dashHeaders(),
       });
       const json = (await response.json()) as { error?: string };
       if (json.error) {
@@ -219,10 +207,7 @@ export default function NearPage() {
         />
       }
     >
-      {locked ? (
-        <p className="note">{notice}</p>
-      ) : (
-        <>
+      <>
           <section className="overview-lead">
             <article className="card">
               <h2>Position</h2>
@@ -423,8 +408,7 @@ export default function NearPage() {
             )}
           </section>
           <p className="note">{notice || (data ? `Updated ${formatDeskClock(data.now)}` : "Loading NEAR…")}</p>
-        </>
-      )}
+      </>
     </AppShell>
   );
 }

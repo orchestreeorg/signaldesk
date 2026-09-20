@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { dashSecret } from "@/lib/env";
 import { getRedis, readHeartbeat, workerOnline } from "@/lib/redis";
 import { startLocalWorker, stopLocalWorker } from "@/lib/spawn";
 import { OPS_CONTROL_CHANNEL, type OpsControlAction } from "@/lib/types";
@@ -18,10 +17,6 @@ const ACTIONS = new Set<OpsControlAction>([
 ]);
 
 export async function POST(request: NextRequest) {
-  const secret = dashSecret();
-  if (secret && request.headers.get("x-dash-secret") !== secret) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
   const body = (await request.json()) as { action?: string };
   const action = body.action as OpsControlAction | undefined;
   if (!action || !ACTIONS.has(action)) {

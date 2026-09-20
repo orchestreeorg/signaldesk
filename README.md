@@ -40,8 +40,6 @@ Postgres is on **5433** (container 5432) so it does not collide with Homebrew on
 
 Start/Stop from the UI only works on a machine that can spawn `pnpm worker`. Vercel cannot run BullMQ or the Binance websocket. Deploy the dashboard with a **hosted** `REDIS_URL` (not localhost). The worker stays on a long-lived host that uses the same Redis.
 
-Optional `DASH_SECRET` must be sent as `x-dash-secret` on `/api/control`.
-
 ## What is wired
 
 - `pnpm bot` is Telegram-only. Dry-run does not poll.
