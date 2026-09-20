@@ -28,8 +28,17 @@ type Lot = {
   value: number;
 };
 
+type NearQuote = {
+  source: "coingecko" | "yahoo";
+  symbol: "NEAR";
+  value: number;
+  changePct: number | null;
+  asOf: string;
+};
+
 type NearPayload = {
   now: string;
+  quote: NearQuote | null;
   position: { tokens: number; value: number; entries: number; exits: number };
   lots: Lot[];
   headlines: Headline[];
@@ -56,6 +65,31 @@ function formatNear(n: number): string {
 function formatUsd(n: number): string {
   const abs = Math.abs(n).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
   return n < 0 ? `−${abs.replace("$", "$")}` : abs;
+}
+
+function formatPx(n: number): string {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 4 });
+}
+
+function formatPct(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) {
+    return "n/a";
+  }
+  const abs = Math.abs(n).toFixed(2);
+  if (n > 0) {
+    return `+${abs}%`;
+  }
+  if (n < 0) {
+    return `−${abs}%`;
+  }
+  return `${abs}%`;
+}
+
+function signedClass(score: number | null | undefined): string {
+  if (score == null || score === 0) {
+    return "";
+  }
+  return score > 0 ? "metric-up" : "metric-down";
 }
 
 export default function NearPage() {
@@ -199,12 +233,28 @@ export default function NearPage() {
                     <div className="metric">{formatNear(position?.tokens ?? 0)}</div>
                     <div className="meta">NEAR</div>
                   </div>
+                  {data.quote ? (
+                    <div className="macro-index-head">
+                      <strong className={signedClass(data.quote.changePct)}>{formatPx(data.quote.value)}</strong>
+                      <span className={`quote-delta ${signedClass(data.quote.changePct)}`}>
+                        {formatPct(data.quote.changePct)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="macro-index-head">
+                      <strong>n/a</strong>
+                      <span className="meta">live $NEAR</span>
+                    </div>
+                  )}
                   <div className="macro-index-head">
                     <strong>{formatUsd(position?.value ?? 0)}</strong>
                     <span className="meta">net value</span>
                   </div>
                   <div className="meta">
-                    {position?.entries ?? 0} entries · {position?.exits ?? 0} exits · chart later
+                    {data.quote
+                      ? `${data.quote.source === "coingecko" ? "CoinGecko" : "Yahoo NEAR-USD"} · ${formatDeskClock(data.quote.asOf)}`
+                      : "Live $NEAR unavailable"}
+                    {` · ${position?.entries ?? 0} entries · ${position?.exits ?? 0} exits`}
                   </div>
                 </>
               )}
