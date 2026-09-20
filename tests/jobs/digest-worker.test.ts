@@ -43,4 +43,22 @@ describe("digest job wiring", () => {
     expect(page).toMatch(/action\("run-macro"\)/);
     expect(page).toMatch(/Send index now/);
   });
+
+  it("branches NEAR jobs to the dedicated bot send path", () => {
+    const worker = readFileSync(join(here, "../../src/processes/worker.ts"), "utf8");
+    expect(worker).toMatch(/isNearJob/);
+    expect(worker).toMatch(/emitNearPosition/);
+    expect(worker).toMatch(/NEAR_TELEGRAM_BOT_TOKEN/);
+    expect(worker).toMatch(/NEAR_TELEGRAM_CHAT_ID/);
+    expect(worker).toMatch(/command\.action === "run-near"/);
+    expect(worker).toMatch(/queues\.digest\.add\("near-now"/);
+  });
+
+  it("accepts run-near from the ops control API", () => {
+    const route = readFileSync(join(here, "../../dashboard/app/api/control/route.ts"), "utf8");
+    const page = readFileSync(join(here, "../../dashboard/app/console/page.tsx"), "utf8");
+    expect(route).toMatch(/"run-near"/);
+    expect(page).toMatch(/action\("run-near"\)/);
+    expect(page).toMatch(/Send NEAR now/);
+  });
 });

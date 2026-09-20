@@ -35,6 +35,10 @@ export function nextMacroAt(now = new Date()): Date {
   return nextAlignedUtc(MACRO_MS, now);
 }
 
+export function nextNearAt(now = new Date()): Date {
+  return nextMacroAt(now);
+}
+
 export function formatWait(next: Date, now = new Date()): string {
   const sec = Math.max(0, Math.round((next.getTime() - now.getTime()) / 1000));
   const minutes = Math.floor(sec / 60);

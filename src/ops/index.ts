@@ -1,4 +1,4 @@
-export { formatWait, nextDigestAt, nextMacroAt, nextNewsAt, nextTapeAt } from "./clock.js";
+export { formatWait, nextDigestAt, nextMacroAt, nextNearAt, nextNewsAt, nextTapeAt } from "./clock.js";
 export { DESK_TZ, DESK_TZ_ABBR, formatDeskClock, formatDeskStamp } from "./tz.js";
 export { startOpsBus } from "./bus.js";
 export { formatOpsLine, ops, setOpsSink } from "./log.js";

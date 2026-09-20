@@ -22,7 +22,8 @@ export type OpsControlAction =
   | "run-news"
   | "run-tape"
   | "run-digest"
-  | "run-macro";
+  | "run-macro"
+  | "run-near";
 
 export type OpsHeartbeat = {
   ts: string;
@@ -35,10 +36,12 @@ export type OpsHeartbeat = {
   nextTapeAt: string;
   nextDigestAt: string;
   nextMacroAt: string;
+  nextNearAt: string;
   waiting: {
     news: string;
     tape: string;
     digest: string;
     macro: string;
+    near: string;
   };
 };

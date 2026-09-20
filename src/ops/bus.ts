@@ -1,6 +1,6 @@
 import type { Redis } from "ioredis";
 import { createRedisOpsSink, setOpsSink } from "./log.js";
-import { formatWait, nextDigestAt, nextMacroAt, nextNewsAt, nextTapeAt } from "./clock.js";
+import { formatWait, nextDigestAt, nextMacroAt, nextNearAt, nextNewsAt, nextTapeAt } from "./clock.js";
 import {
   OPS_CONTROL_CHANNEL,
   OPS_HEARTBEAT_KEY,
@@ -10,7 +10,7 @@ import {
 } from "./types.js";
 
 export type OpsBus = {
-  heartbeat: (partial: Omit<OpsHeartbeat, "ts" | "waiting" | "nextNewsAt" | "nextTapeAt" | "nextDigestAt" | "nextMacroAt">) => Promise<void>;
+  heartbeat: (partial: Omit<OpsHeartbeat, "ts" | "waiting" | "nextNewsAt" | "nextTapeAt" | "nextDigestAt" | "nextMacroAt" | "nextNearAt">) => Promise<void>;
   subscribeControl: (onCommand: (command: OpsControl) => void) => void;
   close: () => void;
 };
@@ -27,6 +27,7 @@ export function startOpsBus(redis: Redis): OpsBus {
       const nextTape = nextTapeAt(now);
       const nextDigest = nextDigestAt(now);
       const nextMacro = nextMacroAt(now);
+      const nextNear = nextNearAt(now);
       const body: OpsHeartbeat = {
         ...partial,
         ts: now.toISOString(),
@@ -34,11 +35,13 @@ export function startOpsBus(redis: Redis): OpsBus {
         nextTapeAt: nextTape.toISOString(),
         nextDigestAt: nextDigest.toISOString(),
         nextMacroAt: nextMacro.toISOString(),
+        nextNearAt: nextNear.toISOString(),
         waiting: {
           news: formatWait(nextNews, now),
           tape: formatWait(nextTape, now),
           digest: formatWait(nextDigest, now),
           macro: formatWait(nextMacro, now),
+          near: formatWait(nextNear, now),
         },
       };
       await redis.set(OPS_HEARTBEAT_KEY, JSON.stringify(body), "EX", OPS_HEARTBEAT_TTL_SEC);

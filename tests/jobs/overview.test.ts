@@ -291,6 +291,7 @@ describe("overview isolation", () => {
     expect(consolePage).toMatch(/\/api\/control/);
     expect(consolePage).toMatch(/Send digest now/);
     expect(consolePage).toMatch(/Send index now/);
+    expect(consolePage).toMatch(/Send NEAR now/);
     expect(consolePage).toMatch(/href="\/console"|current="console"/);
     const nav = readFileSync(join(here, "../../dashboard/lib/nav.tsx"), "utf8");
     expect(nav).toMatch(/\/near/);

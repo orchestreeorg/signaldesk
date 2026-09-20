@@ -2,7 +2,10 @@ import type { AlertKind } from "../domain/index.js";
 import type { DigestReport } from "../jobs/digest.js";
 import { formatMixScore, formatRealized } from "../jobs/digest.js";
 import type { OverviewMacroIndex } from "../jobs/macroScale.js";
-import { formatDeskClock } from "../ops/tz.js";
+import type { NearLot, NearPosition } from "../jobs/nearLots.js";
+import type { NearQuote } from "../jobs/nearPrice.js";
+import { simulateNearHoldingsUsd } from "../jobs/nearSimulate.js";
+import { formatDeskClock, formatDeskStamp } from "../ops/tz.js";
 import type { HeadlineTone } from "./tone.js";
 import type { OutgoingAlert } from "./types.js";
 
@@ -103,6 +106,71 @@ export function renderMacroIndex(index: OverviewMacroIndex | null, now: Date): s
     lines.push(`${escapeHtml(name)}  ${value}`);
   }
   lines.push("1 bearish · 10 bullish · weekly context · not fusion");
+  return lines.join("\n");
+}
+
+export const NEAR_POSITION_LOT_LIMIT = 6;
+
+function formatNearTokens(n: number): string {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
+function formatNearUsd(n: number): string {
+  const abs = Math.abs(n).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  return n < 0 ? `−${abs.replace("$", "$")}` : abs;
+}
+
+function formatNearPx(n: number): string {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 4 });
+}
+
+function formatNearPct(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) {
+    return "n/a";
+  }
+  const abs = Math.abs(n).toFixed(2);
+  if (n > 0) {
+    return `+${abs}%`;
+  }
+  if (n < 0) {
+    return `−${abs}%`;
+  }
+  return `${abs}%`;
+}
+
+/**
+ * Same numbers the NEAR Position box shows: live mark, holdings USD, last lots.
+ * Not fusion. Not an AlertKind.
+ */
+export function renderNearPosition(input: {
+  now: Date;
+  quote: NearQuote | null;
+  position: NearPosition;
+  lots: NearLot[];
+}): string {
+  const mark = input.quote ? simulateNearHoldingsUsd(input.position.tokens, input.quote.value) : null;
+  const lines = [`<b>NEAR · position · ${formatDeskClock(input.now)}</b>`];
+  if (input.quote) {
+    lines.push(`<b>${formatNearPx(input.quote.value)}</b>  ${formatNearPct(input.quote.changePct)}`);
+  } else {
+    lines.push("n/a live $NEAR");
+  }
+  lines.push(`${formatNearTokens(input.position.tokens)} NEAR`);
+  lines.push(mark == null ? "n/a mark" : `<b>${formatNearUsd(mark)}</b> mark`);
+  lines.push(`${input.position.entries} entries · ${input.position.exits} exits`);
+  if (input.quote) {
+    const source = input.quote.source === "coingecko" ? "CoinGecko" : "Yahoo NEAR-USD";
+    lines.push(`${source} · ${formatDeskClock(new Date(input.quote.asOf))}`);
+  }
+  const lots = input.lots.slice(0, NEAR_POSITION_LOT_LIMIT);
+  if (lots.length === 0) {
+    lines.push("No entries or exits yet");
+  } else {
+    for (const lot of lots) {
+      lines.push(`${escapeHtml(lot.side)}  ${formatNearTokens(lot.tokens)} · ${formatNearUsd(lot.value)}`);
+      lines.push(formatDeskStamp(lot.at));
+    }
+  }
   return lines.join("\n");
 }
 
