@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
     return denied;
   }
   try {
-    const result = await withPool((pool) => addNearLot(pool, await request.json()));
+    const body = await request.json();
+    const result = await withPool((pool) => addNearLot(pool, body));
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
