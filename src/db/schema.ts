@@ -82,3 +82,12 @@ export const macroObservations = pgTable(
   },
   (table) => [primaryKey({ columns: [table.source, table.asOf] })],
 );
+
+export const nearLots = pgTable("near_lots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  side: text("side").notNull(),
+  at: timestamp("at", { withTimezone: true }).notNull(),
+  tokens: doublePrecision("tokens").notNull(),
+  value: doublePrecision("value").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});

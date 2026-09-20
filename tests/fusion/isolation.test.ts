@@ -11,6 +11,7 @@ describe("fusion isolation", () => {
     const policy = readFileSync(join(here, "../../src/policy/emit.ts"), "utf8");
     expect(fuse).not.toMatch(/sendAlert|grammy|telegram/);
     expect(fuse).not.toMatch(/sendMacroIndex|emitMacroIndex|macroHourly/);
+    expect(fuse).not.toMatch(/nearLots|loadNearNews|nearDesk/);
     expect(policy).toMatch(/sendAlert/);
   });
 });

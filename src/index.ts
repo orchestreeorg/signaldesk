@@ -25,6 +25,7 @@ export { fillOutcomes, resolveOutcomes } from "./jobs/outcomes.js";
 export { calibrate, priorLookupFromStudy, studyPriors } from "./jobs/calibrate.js";
 export { buildDigest, buildDigestReport } from "./jobs/digest.js";
 export { emitMacroIndex } from "./jobs/macroHourly.js";
+export { buildNearDesk, serializeNearDesk } from "./jobs/nearDesk.js";
 export { buildOverview, buildOverviewReport } from "./jobs/overview.js";
 export { runNewsDesk } from "./jobs/newsDesk.js";
 export { DIGEST_CRON, MACRO_CRON, NEWS_CRON, TAPE_CRON, registerSchedules } from "./jobs/schedule.js";
