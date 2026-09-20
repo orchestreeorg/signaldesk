@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { dashHeaders } from "@/lib/client-auth";
 import { AppShell, StatusChip } from "@/lib/nav";
 import type { OpsEvent, OpsHeartbeat } from "@/lib/types";
 import { formatDeskClock, formatDeskStamp } from "@/lib/tz";
@@ -64,7 +63,7 @@ export default function ConsolePage() {
     try {
       const response = await fetch("/api/control", {
         method: "POST",
-        headers: dashHeaders({ "content-type": "application/json" }),
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: name }),
       });
       const json = (await response.json()) as { ok?: boolean; message?: string; error?: string };

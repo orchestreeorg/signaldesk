@@ -279,8 +279,8 @@ describe("overview isolation", () => {
     expect(sp500).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
     expect(macroScale).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
     expect(macroObservations).not.toMatch(/sendAlert|sendDigest|sendMacroIndex|grammy|tapePolarity/i);
-    expect(route).not.toMatch(/grammy|sendAlert|sendDigest|sendMacroIndex/i);
-    expect(page).not.toMatch(/dangerouslySetInnerHTML/);
+    expect(route).not.toMatch(/grammy|sendAlert|sendDigest|sendMacroIndex|dashSecret|x-dash-secret|DASH_SECRET/i);
+    expect(page).not.toMatch(/dangerouslySetInnerHTML|DASH_SECRET|dashHeaders|x-dash-secret/);
     expect(fuse).not.toMatch(
       /coingecko|coinmarketcap|loadCoingeckoSentiment|loadCmcFearGreed|loadFredOvx|parseYahooOvx|\^OVX|loadGprDaily|loadGoldPrice|loadFredSp500|parseYahooSp500|\^GSPC|GPRD|GC=F/i,
     );

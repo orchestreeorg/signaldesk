@@ -22,11 +22,12 @@ describe("NEAR desk isolation", () => {
     expect(desk).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity|fuse\(/i);
     expect(desk).toMatch(/loadNearPrice/);
     expect(page).toMatch(/live \$NEAR|Live \$NEAR/i);
-    expect(route).not.toMatch(/grammy|sendAlert|sendDigest/i);
-    expect(lotsRoute).not.toMatch(/grammy|sendAlert|sendDigest/i);
+    expect(route).not.toMatch(/grammy|sendAlert|sendDigest|dashSecret|x-dash-secret|DASH_SECRET/i);
+    expect(lotsRoute).not.toMatch(/grammy|sendAlert|sendDigest|dashSecret|x-dash-secret|DASH_SECRET/i);
     expect(page).not.toMatch(/dangerouslySetInnerHTML/);
     expect(page).toMatch(/Record lot/);
     expect(page).toMatch(/NEAR news/);
+    expect(page).not.toMatch(/DASH_SECRET|dashHeaders|x-dash-secret/);
     expect(page).toMatch(/NearPriceSimulator|Simulate/);
     expect(sim).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity/i);
     expect(fuse).not.toMatch(/nearLots|loadNearNews|nearDesk|loadNearPrice|nearSimulate|NEAR Protocol/i);

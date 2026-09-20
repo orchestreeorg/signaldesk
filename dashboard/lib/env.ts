@@ -16,10 +16,6 @@ export function isVercel(): boolean {
   return Boolean(process.env.VERCEL);
 }
 
-export function dashSecret(): string {
-  return process.env.DASH_SECRET ?? "";
-}
-
 export function databaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { dashHeaders, writeDashSecret } from "@/lib/client-auth";
 import { AppShell } from "@/lib/nav";
 
 type ToneMode = "loose" | "balanced" | "strict";
@@ -49,24 +48,16 @@ export default function ParametersPage() {
   const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [locked, setLocked] = useState(false);
-  const [secretDraft, setSecretDraft] = useState("");
 
   const load = async () => {
     setNotice("");
     try {
-      const response = await fetch("/api/parameters", { headers: dashHeaders() });
+      const response = await fetch("/api/parameters");
       const json = (await response.json()) as { settings?: DeskSettings; sources?: SourceDraft[]; error?: string };
-      if (response.status === 401 || json.error === "unauthorized") {
-        setLocked(true);
-        setNotice("Enter DASH_SECRET (Vercel env) to unlock Parameters.");
-        return;
-      }
       if (json.error) {
         setNotice(json.error);
         return;
       }
-      setLocked(false);
       if (json.settings) {
         setSettings(json.settings);
       }
@@ -90,7 +81,7 @@ export default function ParametersPage() {
       void (async () => {
         const response = await fetch("/api/parameters/preview", {
           method: "POST",
-          headers: dashHeaders({ "content-type": "application/json" }),
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({ settings }),
         });
         const json = (await response.json()) as { preview?: PreviewRow[]; error?: string };
@@ -111,8 +102,8 @@ export default function ParametersPage() {
     try {
       const response = await fetch("/api/parameters", {
         method: "PUT",
-        headers: dashHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({ settings, sources }),
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ settings, sources }),
       });
       const json = (await response.json()) as {
         ok?: boolean;
@@ -126,11 +117,6 @@ export default function ParametersPage() {
       }
       if (json.sources && !json.sourcesError) {
         setSources(json.sources);
-      }
-      if (response.status === 401 || json.error === "unauthorized") {
-        setLocked(true);
-        setNotice("Enter DASH_SECRET (Vercel env) to unlock Parameters.");
-        return;
       }
       if (json.error && !json.ok) {
         setNotice(json.error);
@@ -149,41 +135,11 @@ export default function ParametersPage() {
   const patch = (partial: Partial<DeskSettings>) =>
     setSettings((current) => (current ? { ...current, ...partial } : current));
 
-  if (locked || !settings) {
+  if (!settings) {
     return (
-    <AppShell current="parameters" title="Parameters" subtitle="This page is gated by DASH_SECRET on Vercel.">
-        {locked ? (
-          <section className="card stack">
-            <label>
-              DASH_SECRET
-              <input
-                type="password"
-                value={secretDraft}
-                onChange={(event) => setSecretDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    writeDashSecret(secretDraft);
-                    void load();
-                  }
-                }}
-              />
-            </label>
-            <div className="controls">
-              <button
-                className="primary"
-                type="button"
-                onClick={() => {
-                  writeDashSecret(secretDraft);
-                  void load();
-                }}
-              >
-                Unlock
-              </button>
-            </div>
-          </section>
-        ) : null}
+      <AppShell current="parameters" title="Parameters" subtitle="Sources, headline tone, FLASH/FADE gates. Secrets stay in .env.">
         <p className="note">{notice || "Loading parameters…"}</p>
-    </AppShell>
+      </AppShell>
     );
   }
 
