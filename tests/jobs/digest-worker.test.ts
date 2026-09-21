@@ -60,6 +60,8 @@ describe("digest job wiring", () => {
     expect(worker).toMatch(/partitionNearStories/);
     expect(worker).toMatch(/sendHeadlines\(nearTransport/);
     expect(worker).toMatch(/runNewsDesk\(deskItems/);
+    expect(worker).toMatch(/saveOpsHeartbeat/);
+    expect(worker).toMatch(/ensureOpsHeartbeatTable/);
   });
 
   it("accepts run-near from the ops control API", () => {

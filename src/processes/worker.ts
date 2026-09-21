@@ -33,6 +33,7 @@ import {
 import { fillOutcomes } from "../jobs/outcomes.js";
 import { isMacroJob, isNearJob, registerSchedules } from "../jobs/schedule.js";
 import { formatWait, nextDigestAt, nextMacroAt, nextNearAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
+import { composeHeartbeat, ensureOpsHeartbeatTable, saveOpsHeartbeat } from "../ops/heartbeat.js";
 import { Policy } from "../policy/index.js";
 import {
   closeQueues,
@@ -60,6 +61,8 @@ export async function startWorker(): Promise<{
   const tapeEnabled = config.TAPE_LIVE && !process.env.VITEST;
   let paused = false;
   const tapePool = tapeEnabled ? createPool(config.DATABASE_URL) : undefined;
+  const opsPool = createPool(config.DATABASE_URL);
+  await ensureOpsHeartbeatTable(opsPool);
   if (tapePool) {
     await ensureMarksTable(tapePool);
   }
@@ -128,14 +131,29 @@ export async function startWorker(): Promise<{
   const novelty = new MemoryNoveltyIndex();
   const llm = createLlmFromConfig(config);
 
-  const beat = () =>
-    bus.heartbeat({
+  const beat = async () => {
+    const partial = {
       pid: process.pid,
       paused,
       newsLive: config.NEWS_LIVE,
       tapeLive: tapeEnabled,
       dryRun: config.TELEGRAM_DRY_RUN,
-    });
+    };
+    let body;
+    try {
+      body = await bus.heartbeat(partial);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      ops("worker", "heartbeat.redis", `Redis heartbeat failed: ${message}`, { level: "warn" });
+      body = composeHeartbeat(partial);
+    }
+    try {
+      await saveOpsHeartbeat(opsPool, body);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      ops("worker", "heartbeat.db", `Postgres heartbeat failed: ${message}`, { level: "warn" });
+    }
+  };
 
   const processors = [
     new Worker("tape", async () => {
@@ -449,6 +467,7 @@ export async function startWorker(): Promise<{
     ops("worker", "stop", "Worker shutting down");
     liveTape?.stop();
     await tapePool?.end();
+    await opsPool.end();
     await Promise.all(processors.map((worker) => worker.close()));
     bus.close();
     await closeQueues(queues, queueConnection);

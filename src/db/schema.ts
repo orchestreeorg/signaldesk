@@ -1,5 +1,6 @@
 import {
   doublePrecision,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
@@ -82,6 +83,12 @@ export const macroObservations = pgTable(
   },
   (table) => [primaryKey({ columns: [table.source, table.asOf] })],
 );
+
+export const opsHeartbeat = pgTable("ops_heartbeat", {
+  id: integer("id").primaryKey(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  ts: timestamp("ts", { withTimezone: true }).notNull(),
+});
 
 export const nearLots = pgTable("near_lots", {
   id: uuid("id").defaultRandom().primaryKey(),
