@@ -50,6 +50,10 @@ describe("digest job wiring", () => {
     expect(worker).toMatch(/emitNearPosition/);
     expect(worker).toMatch(/NEAR_TELEGRAM_BOT_TOKEN/);
     expect(worker).toMatch(/NEAR_TELEGRAM_CHAT_ID/);
+    expect(worker).toMatch(/LLM_API_KEY/);
+    expect(worker).toMatch(/NEAR note skipped/);
+    expect(worker).toMatch(/NEAR note failed/);
+    expect(worker).toMatch(/NEAR note attached/);
     expect(worker).toMatch(/command\.action === "run-near"/);
     expect(worker).toMatch(/queues\.digest\.add\("near-now"/);
   });

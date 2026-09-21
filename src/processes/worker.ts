@@ -236,7 +236,19 @@ export async function startWorker(): Promise<{
             chatId,
             dryRun: config.TELEGRAM_DRY_RUN,
             now,
+            llm: {
+              apiKey: config.LLM_API_KEY,
+              baseUrl: config.LLM_BASE_URL,
+              model: config.LLM_MODEL,
+            },
           });
+          if (send.noteStatus === "skipped") {
+            ops("near", "note", "NEAR note skipped", { level: "skip" });
+          } else if (send.noteStatus === "failed") {
+            ops("near", "note", "NEAR note failed", { level: "warn" });
+          } else {
+            ops("near", "note", "NEAR note attached", { level: "ok" });
+          }
           ops("near", "emit", send.sent ? "NEAR position sent" : `NEAR position ${send.reason}`, {
             level: send.sent || send.reason === "dry-run" ? "ok" : "skip",
             data: {
@@ -244,6 +256,7 @@ export async function startWorker(): Promise<{
               mark: send.quote?.value ?? null,
               entries: send.position.entries,
               exits: send.position.exits,
+              note: send.noteStatus,
               dryRun: config.TELEGRAM_DRY_RUN,
             },
           });

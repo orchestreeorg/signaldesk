@@ -30,6 +30,8 @@ describe("NEAR desk isolation", () => {
     expect(page).not.toMatch(/DASH_SECRET|dashHeaders|x-dash-secret/);
     expect(page).toMatch(/NearPriceSimulator|Simulate/);
     expect(sim).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity/i);
-    expect(fuse).not.toMatch(/nearLots|loadNearNews|nearDesk|loadNearPrice|nearSimulate|nearHourly|emitNearPosition|NEAR Protocol/i);
+    expect(fuse).not.toMatch(
+      /nearLots|loadNearNews|nearDesk|loadNearPrice|nearSimulate|nearHourly|emitNearPosition|nearNote|NEAR Protocol/i,
+    );
   });
 });
