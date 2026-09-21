@@ -11,6 +11,7 @@ export {
   WORKER_ONLINE_MS,
   workerOnline,
 } from "./heartbeat.js";
+export { claimOpsCommands, enqueueOpsCommand, ensureOpsCommandTable, isQueuedControlAction } from "./commands.js";
 export { formatOpsLine, ops, setOpsSink } from "./log.js";
 export {
   OPS_CONTROL_CHANNEL,

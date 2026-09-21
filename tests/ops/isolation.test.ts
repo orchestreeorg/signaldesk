@@ -7,7 +7,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 describe("ops isolation", () => {
   it("does not send Telegram", () => {
-    const names = ["log.ts", "bus.ts", "clock.ts", "types.ts", "heartbeat.ts"];
+    const names = ["log.ts", "bus.ts", "clock.ts", "types.ts", "heartbeat.ts", "commands.ts"];
     const src = names.map((name) => readFileSync(join(here, "../../src/ops", name), "utf8")).join("\n");
     expect(src).not.toMatch(/sendAlert|telegram|grammy/i);
   });

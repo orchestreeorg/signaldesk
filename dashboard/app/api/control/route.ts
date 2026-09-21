@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRedis } from "@/lib/redis";
+import { enqueueOpsCommand, isQueuedControlAction } from "../../../../src/ops/commands.js";
+import { getDatabase } from "@/lib/pg";
 import { startLocalWorker, stopLocalWorker } from "@/lib/spawn";
 import { loadWorkerStatus } from "@/lib/status";
-import { OPS_CONTROL_CHANNEL, type OpsControlAction } from "@/lib/types";
+import type { OpsControlAction } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,17 @@ const ACTIONS = new Set<OpsControlAction>([
   "run-near",
 ]);
 
+const MESSAGES: Partial<Record<OpsControlAction, string>> = {
+  "run-digest": "Queued DIGEST. The worker will send it on the desk bot in a few seconds.",
+  "run-macro": "Queued weekly index. The worker will send it on the desk bot in a few seconds.",
+  "run-near": "Queued NEAR position. The worker will send it on the NEAR bot in a few seconds.",
+  "run-news": "Queued news poll.",
+  "run-tape": "Queued tape OI tick.",
+  pause: "Queued pause.",
+  resume: "Queued resume.",
+  stop: "Queued stop.",
+};
+
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as { action?: string };
   const action = body.action as OpsControlAction | undefined;
@@ -29,8 +41,8 @@ export async function POST(request: NextRequest) {
     if (action === "start") {
       const status = await loadWorkerStatus();
       if (status.online) {
-        await publish("resume");
-        return NextResponse.json({ ok: true, message: "Worker already running; resumed." });
+        await dispatch("resume");
+        return NextResponse.json({ ok: true, message: "Worker already running; resume queued." });
       }
       const started = startLocalWorker();
       return NextResponse.json({
@@ -39,21 +51,21 @@ export async function POST(request: NextRequest) {
       });
     }
     if (action === "stop") {
-      await publish("stop");
+      await dispatch("stop");
       stopLocalWorker();
-      return NextResponse.json({ ok: true, message: "Stop sent to worker." });
+      return NextResponse.json({ ok: true, message: MESSAGES.stop });
     }
-    await publish(action);
-    return NextResponse.json({ ok: true, message: `${action} sent` });
+    await dispatch(action);
+    return NextResponse.json({ ok: true, message: MESSAGES[action] ?? `${action} queued` });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-async function publish(action: OpsControlAction) {
-  await getRedis().publish(
-    OPS_CONTROL_CHANNEL,
-    JSON.stringify({ action, at: new Date().toISOString() }),
-  );
+async function dispatch(action: OpsControlAction) {
+  if (!isQueuedControlAction(action)) {
+    throw new Error(`cannot queue ${action}`);
+  }
+  await enqueueOpsCommand(getDatabase(), action);
 }
