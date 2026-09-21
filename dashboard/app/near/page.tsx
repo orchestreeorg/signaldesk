@@ -5,6 +5,7 @@ import { AppShell, StatusChip } from "@/lib/nav";
 import type { OpsHeartbeat } from "@/lib/types";
 import { formatDeskClock, formatDeskStamp } from "@/lib/tz";
 import { NearPriceSimulator } from "./NearPriceSimulator";
+import { NearHoldingsChart } from "./NearHoldingsChart";
 
 type Tone = "BULLISH" | "BEARISH" | "NEUTRAL";
 type ToneTab = "ALL" | Tone;
@@ -198,7 +199,7 @@ export default function NearPage() {
     <AppShell
       current="near"
       title="NEAR"
-      subtitle="Entries, exits, and NEAR headlines. Position chart comes later. Not fusion."
+      subtitle="Entries, exits, and NEAR headlines. Holdings USD from lots. Not fusion."
       extra={
         <StatusChip
           online={online}
@@ -209,6 +210,19 @@ export default function NearPage() {
     >
       <>
           <section className="overview-lead">
+            <article className="card near-chart-span">
+              <h2>Holdings</h2>
+              {!data ? (
+                <Spinner label="Loading NEAR holdings chart" tall />
+              ) : (
+                <>
+                  <div className="meta">
+                    Last lots as candles · roof is $300k USD held
+                  </div>
+                  <NearHoldingsChart lots={data.lots} />
+                </>
+              )}
+            </article>
             <article className="card">
               <h2>Position</h2>
               {!data ? (
