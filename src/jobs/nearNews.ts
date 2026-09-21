@@ -74,11 +74,75 @@ let cache: CacheEntry | null = null;
 
 export function resetNearNewsCache(): void {
   cache = null;
+  resetSeenNearHeadlines();
 }
 
 /** Ticker/name only. Does not match the English word "near". */
 export function isNearStory(text: string): boolean {
   return /\bNEAR\b/.test(text) || /Near Protocol/i.test(text) || /\$NEAR\b/.test(text);
+}
+
+export function isNearRawItem(item: { title: string; body?: string }): boolean {
+  return isNearStory(`${item.title}\n${item.body ?? ""}`);
+}
+
+export function partitionNearStories<T extends { title: string; body?: string }>(items: T[]): { near: T[]; rest: T[] } {
+  const near: T[] = [];
+  const rest: T[] = [];
+  for (const item of items) {
+    if (isNearRawItem(item)) {
+      near.push(item);
+    } else {
+      rest.push(item);
+    }
+  }
+  return { near, rest };
+}
+
+const seenNearHeadlineUrls = new Set<string>();
+const SEEN_NEAR_HEADLINE_LIMIT = 500;
+export const NEAR_HEADLINE_PING_MAX_AGE_MS = 3 * 60 * 60 * 1000;
+
+export function resetSeenNearHeadlines(): void {
+  seenNearHeadlineUrls.clear();
+}
+
+export function uniqueNearPingItems<T extends { title: string; url: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    const key = item.url || item.title;
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+/** First-seen NEAR titles from dedicated RSS. In-memory; not fusion. Drops items older than 3h. */
+export function takeUnseenNearHeadlines(rows: NearHeadline[], now: Date = new Date()): NearHeadline[] {
+  const cutoff = now.getTime() - NEAR_HEADLINE_PING_MAX_AGE_MS;
+  const unseen: NearHeadline[] = [];
+  for (const row of rows) {
+    const key = row.url || row.title;
+    if (!key || seenNearHeadlineUrls.has(key)) {
+      continue;
+    }
+    seenNearHeadlineUrls.add(key);
+    const published = Date.parse(row.publishedAt);
+    if (Number.isFinite(published) && published >= cutoff) {
+      unseen.push(row);
+    }
+    if (seenNearHeadlineUrls.size > SEEN_NEAR_HEADLINE_LIMIT) {
+      const first = seenNearHeadlineUrls.values().next().value;
+      if (typeof first === "string") {
+        seenNearHeadlineUrls.delete(first);
+      }
+    }
+  }
+  return unseen;
 }
 
 export function headlinesFromFeed(

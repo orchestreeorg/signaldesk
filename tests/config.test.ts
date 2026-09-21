@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { loadConfig } from "../src/config.js";
+import { loadConfig, nearTelegramChatId } from "../src/config.js";
 
 const validEnv = {
     DATABASE_URL: "postgres://signal:signal@127.0.0.1:5433/signal",
@@ -53,5 +53,26 @@ describe("loadConfig", () => {
       REDIS_URL: validEnv.REDIS_URL,
     });
     expect(config.TELEGRAM_DRY_RUN).toBe(true);
+  });
+
+  it("uses the dedicated NEAR chat, then the desk chat", () => {
+    expect(
+      nearTelegramChatId({
+        NEAR_TELEGRAM_CHAT_ID: "near-chat",
+        TELEGRAM_CHAT_ID: "desk-chat",
+      }),
+    ).toBe("near-chat");
+    expect(
+      nearTelegramChatId({
+        NEAR_TELEGRAM_CHAT_ID: "",
+        TELEGRAM_CHAT_ID: "desk-chat",
+      }),
+    ).toBe("desk-chat");
+    expect(
+      nearTelegramChatId({
+        NEAR_TELEGRAM_CHAT_ID: "",
+        TELEGRAM_CHAT_ID: "",
+      }),
+    ).toBe("");
   });
 });

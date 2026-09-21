@@ -48,6 +48,11 @@ const envSchema = z.object({
 
 export type Config = z.output<typeof envSchema>;
 
+/** Dedicated NEAR bot chat. Falls back to the desk chat so one client receives both bots. */
+export function nearTelegramChatId(config: Pick<Config, "NEAR_TELEGRAM_CHAT_ID" | "TELEGRAM_CHAT_ID">): string {
+  return config.NEAR_TELEGRAM_CHAT_ID || config.TELEGRAM_CHAT_ID;
+}
+
 function readEnv(env: NodeJS.ProcessEnv) {
   return {
     DATABASE_URL: env.DATABASE_URL,

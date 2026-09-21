@@ -4,7 +4,11 @@ import {
   isNearStory,
   loadNearNews,
   mergeNearHeadlines,
+  partitionNearStories,
   resetNearNewsCache,
+  takeUnseenNearHeadlines,
+  uniqueNearPingItems,
+  type NearHeadline,
   type NearNewsSource,
 } from "../../src/jobs/nearNews.js";
 
@@ -89,6 +93,44 @@ describe("NEAR news filter", () => {
       },
     ]);
     expect(merged.map((row) => row.title)).toEqual(["newer", "dup"]);
+  });
+
+  it("splits ticker stories off the desk pile", () => {
+    const { near, rest } = partitionNearStories([
+      { title: "NEAR Protocol hits a TVL high", body: "", url: "https://example.com/near" },
+      { title: "Bitcoin ETF posts record inflow", body: "", url: "https://example.com/btc" },
+      { title: "Markets near a turning point", body: "", url: "https://example.com/word" },
+    ]);
+    expect(near.map((row) => row.url)).toEqual(["https://example.com/near"]);
+    expect(rest.map((row) => row.url)).toEqual(["https://example.com/btc", "https://example.com/word"]);
+  });
+
+  it("pings only first-seen recent NEAR headlines", () => {
+    const now = new Date("2026-09-21T12:00:00.000Z");
+    const recent: NearHeadline = {
+      title: "fresh",
+      url: "https://example.com/fresh",
+      href: "https://example.com/fresh",
+      sourceId: "near-gov",
+      sourceName: "NEAR Forum",
+      publishedAt: "2026-09-21T11:00:00.000Z",
+      tone: "NEUTRAL",
+    };
+    const stale: NearHeadline = {
+      title: "old",
+      url: "https://example.com/old",
+      href: "https://example.com/old",
+      sourceId: "near-gnews",
+      sourceName: "Google News",
+      publishedAt: "2026-09-20T11:00:00.000Z",
+      tone: "NEUTRAL",
+    };
+    expect(takeUnseenNearHeadlines([recent, stale], now).map((row) => row.url)).toEqual(["https://example.com/fresh"]);
+    expect(takeUnseenNearHeadlines([recent, stale], now)).toEqual([]);
+    expect(uniqueNearPingItems([recent, recent, stale]).map((row) => row.url)).toEqual([
+      "https://example.com/fresh",
+      "https://example.com/old",
+    ]);
   });
 
   it("does not refetch inside the TTL", async () => {
