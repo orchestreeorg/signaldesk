@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { holdingsCandles, holdingsScale, NEAR_HOLDINGS_GOAL_USD } from "../../src/jobs/nearChart.js";
+import { holdingsCandles, holdingsGoalProgress, holdingsScale, NEAR_HOLDINGS_GOAL_USD } from "../../src/jobs/nearChart.js";
 import type { NearLot } from "../../src/jobs/nearLots.js";
 
 describe("NEAR holdings candles", () => {
@@ -61,5 +61,11 @@ describe("NEAR holdings candles", () => {
   it("roofs the scale at the 300k USD goal", () => {
     expect(holdingsScale([{ low: 0, high: 190 }])).toEqual({ min: 0, max: NEAR_HOLDINGS_GOAL_USD });
     expect(holdingsScale([{ low: -50, high: 10_000 }])).toEqual({ min: -50, max: NEAR_HOLDINGS_GOAL_USD });
+  });
+
+  it("reports holdings against the 300k goal", () => {
+    expect(holdingsGoalProgress(150_000)).toEqual({ held: 150_000, goal: 300_000, pct: 50 });
+    expect(holdingsGoalProgress(0).pct).toBe(0);
+    expect(holdingsGoalProgress(190).pct).toBeCloseTo((190 / 300_000) * 100, 5);
   });
 });

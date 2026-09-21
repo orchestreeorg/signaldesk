@@ -66,3 +66,11 @@ export function holdingsScale(candles: Array<Pick<HoldingsCandle, "low" | "high"
   const min = candles.length === 0 ? 0 : Math.min(0, ...lows);
   return { min, max: NEAR_HOLDINGS_GOAL_USD };
 }
+
+export function holdingsGoalProgress(
+  held: number,
+  goal = NEAR_HOLDINGS_GOAL_USD,
+): { held: number; goal: number; pct: number } {
+  const pct = !Number.isFinite(held) || !Number.isFinite(goal) || goal === 0 ? 0 : (held / goal) * 100;
+  return { held: Number.isFinite(held) ? held : 0, goal, pct };
+}
