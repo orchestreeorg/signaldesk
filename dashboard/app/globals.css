@@ -227,7 +227,7 @@ h1 {
   display: block;
   aspect-ratio: 960 / 220;
 }
-.near-candle-hit { fill: transparent; cursor: pointer; }
+.near-candle-hit { fill: none; stroke: none; cursor: pointer; }
 .near-candle-tip {
   position: absolute;
   z-index: 2;
@@ -254,8 +254,10 @@ h1 {
   font-size: 10px;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
 }
-.near-candle-up { fill: var(--ok); stroke: var(--ok); stroke-width: 1.6; }
-.near-candle-down { fill: var(--error); stroke: var(--error); stroke-width: 1.6; }
+.near-candle-up { fill: var(--ok); }
+.near-candle-down { fill: var(--error); }
+.near-candle-up line { stroke: var(--ok); stroke-width: 1.6; }
+.near-candle-down line { stroke: var(--error); stroke-width: 1.6; }
 .near-candle-goal { stroke: var(--ok); stroke-width: 1.8; }
 .near-candle-goal-label {
   fill: var(--ok);
