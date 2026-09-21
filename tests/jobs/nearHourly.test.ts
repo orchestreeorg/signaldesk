@@ -17,9 +17,15 @@ describe("hourly NEAR position job", () => {
 
   it("sends through the dedicated Telegram path, not Policy or fusion", () => {
     const src = readFileSync(join(here, "../../src/jobs/nearHourly.ts"), "utf8");
+    const note = readFileSync(join(here, "../../src/jobs/nearNote.ts"), "utf8");
+    const news = readFileSync(join(here, "../../src/jobs/nearNews.ts"), "utf8");
     expect(src).toMatch(/listNearLots/);
     expect(src).toMatch(/loadNearPrice/);
+    expect(src).toMatch(/loadNearNews/);
+    expect(src).toMatch(/loadNearNote/);
     expect(src).toMatch(/sendNearPosition/);
-    expect(src).not.toMatch(/loadNearNews|tapePolarity|fuse\(|sendAlert|sendDigest|sendHeadline|sendMacroIndex/);
+    expect(src).not.toMatch(/persistRawItems|tapePolarity|fuse\(|sendAlert|sendDigest|sendHeadline|sendMacroIndex/);
+    expect(note).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|fuse\(|persistRawItems/i);
+    expect(news).not.toMatch(/sendAlert|sendDigest|persistRawItems/i);
   });
 });

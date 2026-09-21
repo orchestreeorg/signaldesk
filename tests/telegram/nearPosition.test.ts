@@ -80,6 +80,20 @@ describe("NEAR position telegram", () => {
     expect(html).toContain("entry  1,790 · $7,200.00");
   });
 
+  it("appends an escaped NOTE under the Position card", () => {
+    const html = renderNearPosition({
+      now,
+      quote,
+      position,
+      lots,
+      note: "MARK — $4.20 vs book\nWATCH — <script>lose 4.20</script>",
+    });
+    expect(html).toContain("<b>NOTE</b>");
+    expect(html).toContain("MARK — $4.20 vs book");
+    expect(html).toContain("&lt;script&gt;lose 4.20&lt;/script&gt;");
+    expect(html).not.toContain("<script>");
+  });
+
   it("keeps the Position empty state when the book is empty", () => {
     const html = renderNearPosition({
       now,
@@ -123,6 +137,23 @@ describe("NEAR position telegram", () => {
     expect(capped).toMatchObject({ sent: false, reason: "flash-cap" });
     expect(cappedNear.sent).toBe(true);
     expect(sent.filter((html) => html.includes("NEAR · position"))).toHaveLength(2);
+  });
+
+  it("still sends Position when the note is missing", async () => {
+    const { sent, transport } = recordingTransport();
+    const result = await sendNearPosition(transport, {
+      chatId: "1",
+      quote,
+      position,
+      lots,
+      note: null,
+      dryRun: false,
+      now,
+    });
+    expect(result.sent).toBe(true);
+    expect(result.html).toContain("NEAR · position");
+    expect(result.html).not.toContain("<b>NOTE</b>");
+    expect(sent).toHaveLength(1);
   });
 
   it("logs instead of sending when dry-run is on", async () => {

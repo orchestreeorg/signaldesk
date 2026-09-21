@@ -137,6 +137,7 @@ export async function sendNearPosition(
     quote?: NearQuote | null;
     position: NearPosition;
     lots: NearLot[];
+    note?: string | null;
     dryRun: boolean;
     now?: Date;
   },
@@ -149,6 +150,7 @@ export async function sendNearPosition(
       quote: input.quote ?? null,
       position: input.position,
       lots: input.lots,
+      note: input.note,
     });
   await transport.send(input.chatId, html);
   if (input.dryRun) {

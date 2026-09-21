@@ -147,6 +147,7 @@ export function renderNearPosition(input: {
   quote: NearQuote | null;
   position: NearPosition;
   lots: NearLot[];
+  note?: string | null;
 }): string {
   const mark = input.quote ? simulateNearHoldingsUsd(input.position.tokens, input.quote.value) : null;
   const lines = [`<b>NEAR · position · ${formatDeskClock(input.now)}</b>`];
@@ -169,6 +170,17 @@ export function renderNearPosition(input: {
     for (const lot of lots) {
       lines.push(`${escapeHtml(lot.side)}  ${formatNearTokens(lot.tokens)} · ${formatNearUsd(lot.value)}`);
       lines.push(formatDeskStamp(lot.at));
+    }
+  }
+  const note = input.note?.trim();
+  if (note) {
+    lines.push("");
+    lines.push("<b>NOTE</b>");
+    for (const line of note.split(/\n+/)) {
+      const text = line.trim();
+      if (text) {
+        lines.push(escapeHtml(text));
+      }
     }
   }
   return lines.join("\n");
