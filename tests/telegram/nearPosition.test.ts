@@ -66,18 +66,48 @@ function recordingTransport() {
 }
 
 describe("NEAR position telegram", () => {
-  it("lists live mark, holdings USD, and last Position lots", () => {
-    const html = renderNearPosition({ now, quote, position, lots });
+  it("lists live mark and ATH without the lot blotter", () => {
+    const html = renderNearPosition({
+      now,
+      quote,
+      position,
+      ath: {
+        value: 58_233,
+        at: now,
+        current: 58_233,
+        status: "ath",
+        under: 0,
+        underPct: 0,
+      },
+    });
     expect(html).toContain("<b>NEAR · position · 18:00 ART</b>");
     expect(html).toContain("<b>$4.20</b>");
     expect(html).toContain("+18.27%");
     expect(html).toContain("13,865 NEAR");
     expect(html).toContain("<b>$58,233.00</b> mark");
-    expect(html).toContain("2 entries · 0 exits");
+    expect(html).toContain("ATH  $58,233.00");
     expect(html).toContain("CoinGecko · 18:00 ART");
-    expect(html).toContain("entry  12,075 · $50,351.00");
-    expect(html).toContain("2026-09-20 18:33 ART");
-    expect(html).toContain("entry  1,790 · $7,200.00");
+    expect(html).not.toContain("entries ·");
+    expect(html).not.toContain("entry  12,075");
+    expect(html).not.toContain("exits");
+  });
+
+  it("reports how far the mark sits under the last ATH", () => {
+    const html = renderNearPosition({
+      now,
+      quote,
+      position,
+      ath: {
+        value: 61_200,
+        at: now,
+        current: 58_233,
+        status: "under",
+        under: 2_967,
+        underPct: (2_967 / 61_200) * 100,
+      },
+    });
+    expect(html).toContain("ATH  $61,200.00");
+    expect(html).toContain("under  $2,967.00  (−4.8%)");
   });
 
   it("appends an escaped NOTE under the Position card", () => {
@@ -85,10 +115,11 @@ describe("NEAR position telegram", () => {
       now,
       quote,
       position,
-      lots,
       note: "MARK — $4.20 vs book\nWATCH — <script>lose 4.20</script>",
     });
+    expect(html).toContain("────────");
     expect(html).toContain("<b>NOTE</b>");
+    expect(html.indexOf("────────")).toBeLessThan(html.indexOf("<b>NOTE</b>"));
     expect(html).toContain("MARK — $4.20 vs book");
     expect(html).toContain("&lt;script&gt;lose 4.20&lt;/script&gt;");
     expect(html).not.toContain("<script>");
@@ -99,11 +130,11 @@ describe("NEAR position telegram", () => {
       now,
       quote: null,
       position: { tokens: 0, value: 0, entries: 0, exits: 0 },
-      lots: [],
     });
     expect(html).toContain("n/a live $NEAR");
     expect(html).toContain("n/a mark");
-    expect(html).toContain("No entries or exits yet");
+    expect(html).toContain("n/a ATH");
+    expect(html).not.toContain("No entries or exits yet");
   });
 
   it("sends while mute and FLASH cap are in effect", async () => {

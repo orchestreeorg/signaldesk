@@ -13,7 +13,7 @@ describe("fusion isolation", () => {
     expect(fuse).not.toMatch(/sendMacroIndex|emitMacroIndex|macroHourly/);
     expect(fuse).not.toMatch(/sendNearPosition|emitNearPosition|nearHourly/);
     expect(fuse).not.toMatch(/nearNote|NEAR_NOTE_SYSTEM_PROMPT|completeChat/);
-    expect(fuse).not.toMatch(/nearLots|loadNearNews|nearDesk|nearSimulate|nearChart/);
+    expect(fuse).not.toMatch(/nearLots|loadNearNews|nearDesk|nearSimulate|nearChart|nearAth|recordNearAth/);
     expect(policy).toMatch(/sendAlert/);
   });
 });
