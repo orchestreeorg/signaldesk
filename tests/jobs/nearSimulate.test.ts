@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { simulateNearHoldingsUsd } from "../../src/jobs/nearSimulate.js";
+import { nearPositionUsd, simulateNearHoldingsUsd } from "../../src/jobs/nearSimulate.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -11,6 +11,12 @@ describe("NEAR price simulator", () => {
     expect(simulateNearHoldingsUsd(13865, 4.2)).toBe(58233);
     expect(simulateNearHoldingsUsd(100, 2.5)).toBe(250);
     expect(simulateNearHoldingsUsd(0, 4)).toBe(0);
+  });
+
+  it("uses the live mark for current position USD", () => {
+    expect(nearPositionUsd({ tokens: 100, book: 50_204, price: 577.36 })).toBe(57_736);
+    expect(nearPositionUsd({ tokens: 100, book: 50_204, price: null })).toBe(50_204);
+    expect(nearPositionUsd({ tokens: 100, book: 50_204 })).toBe(50_204);
   });
 
   it("rejects a missing or non-positive mark", () => {

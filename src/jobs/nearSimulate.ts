@@ -4,3 +4,12 @@ export function simulateNearHoldingsUsd(tokens: number, price: number): number |
   }
   return Number((tokens * price).toFixed(2));
 }
+
+/** Live mark when a quote exists; otherwise remaining book. Same number Position and Holdings use. */
+export function nearPositionUsd(input: { tokens: number; book: number; price?: number | null }): number {
+  const mark = input.price == null ? null : simulateNearHoldingsUsd(input.tokens, input.price);
+  if (mark != null) {
+    return mark;
+  }
+  return Number.isFinite(input.book) ? input.book : 0;
+}

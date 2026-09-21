@@ -32,6 +32,7 @@ describe("NEAR desk isolation", () => {
     expect(page).not.toMatch(/DASH_SECRET|dashHeaders|x-dash-secret/);
     expect(page).toMatch(/NearPriceSimulator|Simulate/);
     expect(page).toMatch(/NearHoldingsChart|Holdings/);
+    expect(page).toMatch(/nearPositionUsd|held=\{netUsd\}/);
     expect(chart).toMatch(/NEAR_HOLDINGS_GOAL_USD/);
     expect(chart).toMatch(/holdingsGoalProgress/);
     expect(lots).toMatch(/applyLotToBook/);
