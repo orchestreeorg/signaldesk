@@ -64,23 +64,52 @@ export function parseNearLot(raw: unknown): NearLotInput | { error: string } {
   return { side: row.side, at, tokens, value };
 }
 
+export type NearBook = {
+  tokens: number;
+  value: number;
+};
+
+function lotTime(lot: Pick<NearLot, "at">): number {
+  const ts = lot.at instanceof Date ? lot.at.getTime() : Date.parse(String(lot.at));
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+/** Entry adds cost. Exit removes the sold share of current book, not the typed sale proceeds. */
+export function applyLotToBook(book: NearBook, lot: Pick<NearLot, "side" | "tokens" | "value">): NearBook {
+  if (lot.side === "entry") {
+    return { tokens: book.tokens + lot.tokens, value: book.value + lot.value };
+  }
+  const held = book.tokens;
+  if (held > 0) {
+    const sold = Math.min(lot.tokens, held);
+    return {
+      tokens: book.tokens - lot.tokens,
+      value: book.value - book.value * (sold / held),
+    };
+  }
+  return { tokens: book.tokens - lot.tokens, value: book.value - lot.value };
+}
+
 export function summarizeNearLots(lots: NearLot[]): NearPosition {
-  let tokens = 0;
-  let value = 0;
+  const chronological = [...lots].sort((a, b) => {
+    const delta = lotTime(a) - lotTime(b);
+    if (delta !== 0) {
+      return delta;
+    }
+    return a.id.localeCompare(b.id);
+  });
+  let book: NearBook = { tokens: 0, value: 0 };
   let entries = 0;
   let exits = 0;
-  for (const lot of lots) {
+  for (const lot of chronological) {
+    book = applyLotToBook(book, lot);
     if (lot.side === "entry") {
-      tokens += lot.tokens;
-      value += lot.value;
       entries += 1;
     } else {
-      tokens -= lot.tokens;
-      value -= lot.value;
       exits += 1;
     }
   }
-  return { tokens, value, entries, exits };
+  return { tokens: book.tokens, value: book.value, entries, exits };
 }
 
 export async function listNearLots(pool: pg.Pool): Promise<NearLot[]> {
