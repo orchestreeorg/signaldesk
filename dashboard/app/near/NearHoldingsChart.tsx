@@ -24,10 +24,9 @@ function yOf(value: number, min: number, max: number, top: number, bottom: numbe
   return bottom - ((value - min) / (max - min)) * (bottom - top);
 }
 
-export function NearHoldingsChart(props: { lots: Lot[] }) {
+export function NearHoldingsChart(props: { lots: Lot[]; held: number }) {
   const candles = holdingsCandles(props.lots);
-  const held = candles[candles.length - 1]?.close ?? 0;
-  const progress = holdingsGoalProgress(held);
+  const progress = holdingsGoalProgress(props.held);
   return (
     <>
       <div className="near-goal-row">
