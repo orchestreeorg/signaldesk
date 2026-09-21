@@ -67,7 +67,7 @@ export default function ConsolePage() {
         body: JSON.stringify({ action: name }),
       });
       const json = (await response.json()) as { ok?: boolean; message?: string; error?: string };
-      setNotice(json.error ?? json.message ?? "");
+      setNotice(json.error ?? json.message ?? (response.ok ? "" : "Control request failed"));
     } finally {
       setBusy(null);
     }
@@ -115,9 +115,9 @@ export default function ConsolePage() {
         <button disabled={Boolean(busy) || !online} onClick={() => void action("resume")}>Resume</button>
         <button disabled={Boolean(busy) || !online} onClick={() => void action("run-news")}>Run news now</button>
         <button disabled={Boolean(busy) || !online} onClick={() => void action("run-tape")}>Run tape OI now</button>
-        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-digest")}>Send digest now</button>
-        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-macro")}>Send index now</button>
-        <button disabled={Boolean(busy) || !online} onClick={() => void action("run-near")}>Send NEAR now</button>
+        <button disabled={Boolean(busy)} onClick={() => void action("run-digest")}>Send digest now</button>
+        <button disabled={Boolean(busy)} onClick={() => void action("run-macro")}>Send index now</button>
+        <button disabled={Boolean(busy)} onClick={() => void action("run-near")}>Send NEAR now</button>
         <button className="danger" disabled={Boolean(busy) || !online} onClick={() => void action("stop")}>Stop</button>
       </div>
       <p className="note">{busy ? `Working: ${busy}` : notice || hint}</p>

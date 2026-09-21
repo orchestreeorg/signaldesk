@@ -34,6 +34,7 @@ import { fillOutcomes } from "../jobs/outcomes.js";
 import { isMacroJob, isNearJob, registerSchedules } from "../jobs/schedule.js";
 import { formatWait, nextDigestAt, nextMacroAt, nextNearAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
 import { composeHeartbeat, ensureOpsHeartbeatTable, saveOpsHeartbeat } from "../ops/heartbeat.js";
+import { claimOpsCommands, ensureOpsCommandTable } from "../ops/commands.js";
 import { Policy } from "../policy/index.js";
 import {
   closeQueues,
@@ -63,6 +64,7 @@ export async function startWorker(): Promise<{
   const tapePool = tapeEnabled ? createPool(config.DATABASE_URL) : undefined;
   const opsPool = createPool(config.DATABASE_URL);
   await ensureOpsHeartbeatTable(opsPool);
+  await ensureOpsCommandTable(opsPool);
   if (tapePool) {
     await ensureMarksTable(tapePool);
   }
@@ -419,6 +421,11 @@ export async function startWorker(): Promise<{
   }
 
   bus.subscribeControl((command) => {
+    applyControl(command);
+    void beat();
+  });
+
+  const applyControl = (command: { action: string; at: string }) => {
     ops("worker", "control", `Received ${command.action}`, { data: { action: command.action } });
     if (command.action === "pause") {
       paused = true;
@@ -444,8 +451,22 @@ export async function startWorker(): Promise<{
     if (command.action === "stop") {
       void runtimeStop().finally(() => process.exit(0));
     }
-    void beat();
-  });
+  };
+
+  const drainCommands = async () => {
+    try {
+      const rows = await claimOpsCommands(opsPool);
+      for (const command of rows) {
+        applyControl(command);
+      }
+      if (rows.length > 0) {
+        await beat();
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      ops("worker", "control.db", `Command poll failed: ${message}`, { level: "warn" });
+    }
+  };
 
   const collectors = listCollectors().map((collector) => collector.name);
   ops("worker", "boot", `collectors=${collectors.join(",")}`, { data: { collectors } });
@@ -461,9 +482,14 @@ export async function startWorker(): Promise<{
   const heartbeatTimer = setInterval(() => {
     void beat();
   }, 5_000);
+  const commandTimer = setInterval(() => {
+    void drainCommands();
+  }, 1_000);
+  void drainCommands();
 
   async function runtimeStop() {
     clearInterval(heartbeatTimer);
+    clearInterval(commandTimer);
     ops("worker", "stop", "Worker shutting down");
     liveTape?.stop();
     await tapePool?.end();

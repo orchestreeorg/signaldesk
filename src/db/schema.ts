@@ -90,6 +90,13 @@ export const opsHeartbeat = pgTable("ops_heartbeat", {
   ts: timestamp("ts", { withTimezone: true }).notNull(),
 });
 
+export const opsCommands = pgTable("ops_commands", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  action: text("action").notNull(),
+  at: timestamp("at", { withTimezone: true }).notNull(),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+});
+
 export const nearLots = pgTable("near_lots", {
   id: uuid("id").defaultRandom().primaryKey(),
   side: text("side").notNull(),

@@ -32,6 +32,7 @@ describe("digest job wiring", () => {
     const route = readFileSync(join(here, "../../dashboard/app/api/control/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/console/page.tsx"), "utf8");
     expect(route).toMatch(/"run-digest"/);
+    expect(route).toMatch(/enqueueOpsCommand/);
     expect(page).toMatch(/action\("run-digest"\)/);
     expect(page).toMatch(/Send digest now/);
   });
@@ -40,6 +41,7 @@ describe("digest job wiring", () => {
     const route = readFileSync(join(here, "../../dashboard/app/api/control/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/console/page.tsx"), "utf8");
     expect(route).toMatch(/"run-macro"/);
+    expect(route).toMatch(/enqueueOpsCommand/);
     expect(page).toMatch(/action\("run-macro"\)/);
     expect(page).toMatch(/Send index now/);
   });
@@ -62,12 +64,15 @@ describe("digest job wiring", () => {
     expect(worker).toMatch(/runNewsDesk\(deskItems/);
     expect(worker).toMatch(/saveOpsHeartbeat/);
     expect(worker).toMatch(/ensureOpsHeartbeatTable/);
+    expect(worker).toMatch(/claimOpsCommands/);
+    expect(worker).toMatch(/drainCommands/);
   });
 
   it("accepts run-near from the ops control API", () => {
     const route = readFileSync(join(here, "../../dashboard/app/api/control/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/console/page.tsx"), "utf8");
     expect(route).toMatch(/"run-near"/);
+    expect(route).toMatch(/enqueueOpsCommand/);
     expect(page).toMatch(/action\("run-near"\)/);
     expect(page).toMatch(/Send NEAR now/);
   });
