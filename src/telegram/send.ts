@@ -3,6 +3,7 @@ import type { AlertKind } from "../domain/index.js";
 import { renderAlert, renderDigest, renderHeadline, renderMacroIndex, renderNearPosition } from "./html.js";
 import type { DigestReport } from "../jobs/digest.js";
 import type { OverviewMacroIndex } from "../jobs/macroScale.js";
+import type { NearAthView } from "../jobs/nearAth.js";
 import type { NearLot, NearPosition } from "../jobs/nearLots.js";
 import type { NearQuote } from "../jobs/nearPrice.js";
 import { ChatStore } from "./store.js";
@@ -136,7 +137,8 @@ export async function sendNearPosition(
     html?: string;
     quote?: NearQuote | null;
     position: NearPosition;
-    lots: NearLot[];
+    lots?: NearLot[];
+    ath?: NearAthView | null;
     note?: string | null;
     dryRun: boolean;
     now?: Date;
@@ -149,7 +151,7 @@ export async function sendNearPosition(
       now,
       quote: input.quote ?? null,
       position: input.position,
-      lots: input.lots,
+      ath: input.ath,
       note: input.note,
     });
   await transport.send(input.chatId, html);

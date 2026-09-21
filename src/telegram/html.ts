@@ -2,10 +2,11 @@ import type { AlertKind } from "../domain/index.js";
 import type { DigestReport } from "../jobs/digest.js";
 import { formatMixScore, formatRealized } from "../jobs/digest.js";
 import type { OverviewMacroIndex } from "../jobs/macroScale.js";
-import type { NearLot, NearPosition } from "../jobs/nearLots.js";
+import type { NearAthView } from "../jobs/nearAth.js";
+import type { NearPosition } from "../jobs/nearLots.js";
 import type { NearQuote } from "../jobs/nearPrice.js";
 import { simulateNearHoldingsUsd } from "../jobs/nearSimulate.js";
-import { formatDeskClock, formatDeskStamp } from "../ops/tz.js";
+import { formatDeskClock } from "../ops/tz.js";
 import type { HeadlineTone } from "./tone.js";
 import type { OutgoingAlert } from "./types.js";
 
@@ -109,8 +110,6 @@ export function renderMacroIndex(index: OverviewMacroIndex | null, now: Date): s
   return lines.join("\n");
 }
 
-export const NEAR_POSITION_LOT_LIMIT = 6;
-
 function formatNearTokens(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
 }
@@ -139,14 +138,13 @@ function formatNearPct(n: number | null): string {
 }
 
 /**
- * Same numbers the NEAR Position box shows: live mark, holdings USD, last lots.
- * Not fusion. Not an AlertKind.
+ * Live mark plus ATH vs that mark. No lot list. Not fusion. Not an AlertKind.
  */
 export function renderNearPosition(input: {
   now: Date;
   quote: NearQuote | null;
   position: NearPosition;
-  lots: NearLot[];
+  ath?: NearAthView | null;
   note?: string | null;
 }): string {
   const mark = input.quote ? simulateNearHoldingsUsd(input.position.tokens, input.quote.value) : null;
@@ -158,23 +156,21 @@ export function renderNearPosition(input: {
   }
   lines.push(`${formatNearTokens(input.position.tokens)} NEAR`);
   lines.push(mark == null ? "n/a mark" : `<b>${formatNearUsd(mark)}</b> mark`);
-  lines.push(`${input.position.entries} entries · ${input.position.exits} exits`);
   if (input.quote) {
     const source = input.quote.source === "coingecko" ? "CoinGecko" : "Yahoo NEAR-USD";
     lines.push(`${source} · ${formatDeskClock(new Date(input.quote.asOf))}`);
   }
-  const lots = input.lots.slice(0, NEAR_POSITION_LOT_LIMIT);
-  if (lots.length === 0) {
-    lines.push("No entries or exits yet");
+  if (!input.ath) {
+    lines.push("n/a ATH");
+  } else if (input.ath.status === "ath") {
+    lines.push(`ATH  ${formatNearUsd(input.ath.value)}`);
   } else {
-    for (const lot of lots) {
-      lines.push(`${escapeHtml(lot.side)}  ${formatNearTokens(lot.tokens)} · ${formatNearUsd(lot.value)}`);
-      lines.push(formatDeskStamp(lot.at));
-    }
+    lines.push(`ATH  ${formatNearUsd(input.ath.value)}`);
+    lines.push(`under  ${formatNearUsd(input.ath.under)}  (−${input.ath.underPct.toFixed(1)}%)`);
   }
   const note = input.note?.trim();
   if (note) {
-    lines.push("");
+    lines.push("────────");
     lines.push("<b>NOTE</b>");
     for (const line of note.split(/\n+/)) {
       const text = line.trim();

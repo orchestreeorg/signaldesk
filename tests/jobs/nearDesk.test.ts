@@ -40,7 +40,7 @@ describe("NEAR desk isolation", () => {
     expect(chart).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity/i);
     expect(chartUi).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity|dangerouslySetInnerHTML/i);
     expect(fuse).not.toMatch(
-      /nearLots|loadNearNews|nearDesk|loadNearPrice|nearSimulate|nearHourly|emitNearPosition|nearNote|nearChart|NEAR Protocol/i,
+      /nearLots|loadNearNews|nearDesk|loadNearPrice|nearSimulate|nearHourly|emitNearPosition|nearNote|nearChart|nearAth|NEAR Protocol/i,
     );
   });
 });

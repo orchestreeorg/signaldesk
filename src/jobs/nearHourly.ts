@@ -1,9 +1,11 @@
 import type pg from "pg";
 import { sendNearPosition, type TelegramTransport } from "../telegram/send.js";
+import { recordNearAth, type NearAthView } from "./nearAth.js";
 import { loadNearNews, type NearHeadline } from "./nearNews.js";
 import { loadNearNote, type NearNoteStatus } from "./nearNote.js";
 import { listNearLots, summarizeNearLots, type NearLot, type NearPosition } from "./nearLots.js";
 import { loadNearPrice, type NearQuote } from "./nearPrice.js";
+import { simulateNearHoldingsUsd } from "./nearSimulate.js";
 
 export type NearPositionEmitResult = {
   sent: boolean;
@@ -12,11 +14,12 @@ export type NearPositionEmitResult = {
   quote: NearQuote | null;
   position: NearPosition;
   lots: NearLot[];
+  ath: NearAthView | null;
   noteStatus: NearNoteStatus;
 };
 
 /**
- * Hourly NEAR mark on the dedicated bot: live price, Position lots, holdings USD.
+ * Hourly NEAR mark on the dedicated bot: live price, holdings USD, ATH vs mark.
  * Optional LLM clerk note. Telegram-only send path. Not FLASH; not fusion.
  */
 export async function emitNearPosition(
@@ -42,6 +45,8 @@ export async function emitNearPosition(
     input.headlines ? Promise.resolve(input.headlines) : loadNearNews({ now }).catch(() => []),
   ]);
   const position = summarizeNearLots(lots);
+  const mark = quote ? simulateNearHoldingsUsd(position.tokens, quote.value) : null;
+  const ath = mark == null ? null : await recordNearAth(pool, mark, now);
   const note = await loadNearNote({
     now,
     quote,
@@ -58,6 +63,7 @@ export async function emitNearPosition(
     quote,
     position,
     lots,
+    ath,
     note: note.note,
     dryRun: input.dryRun,
     now,
@@ -69,6 +75,7 @@ export async function emitNearPosition(
     quote,
     position,
     lots,
+    ath,
     noteStatus: note.status,
   };
 }
