@@ -36,9 +36,9 @@ Postgres is on **5433** (container 5432) so it does not collide with Homebrew on
 
 ## Ops dashboard
 
-`pnpm dash` is a Next.js console (Vercel-ready root: `dashboard/`). It tails structured worker logs from Redis: fetches, source skips, fusion holds, Telegram sends, and the wait until the next news / tape / DIGEST cron.
+`pnpm dash` is a Next.js console (Vercel-ready root: `dashboard/`). It tails structured worker logs from Redis: fetches, source skips, fusion holds, Telegram sends, and the wait until the next news / tape / DIGEST cron. The **worker online** chip reads `ops_heartbeat` in Postgres (same `DATABASE_URL` as Overview), not Redis, so Vercel stays truthful when Redis URLs differ. Redis is still used for Console logs and Start/Stop.
 
-Start/Stop from the UI only works on a machine that can spawn `pnpm worker`. Vercel cannot run BullMQ or the Binance websocket. Deploy the dashboard with a **hosted** `REDIS_URL` (not localhost). The worker stays on a long-lived host that uses the same Redis.
+Start/Stop from the UI only works on a machine that can spawn `pnpm worker`. Vercel cannot run BullMQ or the Binance websocket. Deploy the dashboard with a **hosted** `DATABASE_URL`. Console logs still need the worker's `REDIS_URL`.
 
 ## What is wired
 

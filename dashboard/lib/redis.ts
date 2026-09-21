@@ -1,6 +1,9 @@
 import { Redis } from "ioredis";
+import { parseHeartbeat, workerOnline } from "../../src/ops/heartbeat.js";
 import { redisUrl } from "./env";
 import { OPS_HEARTBEAT_KEY, OPS_LOG_LIST, type OpsEvent, type OpsHeartbeat } from "./types";
+
+export { workerOnline };
 
 let client: Redis | undefined;
 
@@ -29,19 +32,5 @@ export async function readLogs(after = 0): Promise<OpsEvent[]> {
 
 export async function readHeartbeat(): Promise<OpsHeartbeat | null> {
   const raw = await getRedis().get(OPS_HEARTBEAT_KEY);
-  if (!raw) {
-    return null;
-  }
-  try {
-    return JSON.parse(raw) as OpsHeartbeat;
-  } catch {
-    return null;
-  }
-}
-
-export function workerOnline(heartbeat: OpsHeartbeat | null, now = Date.now()): boolean {
-  if (!heartbeat) {
-    return false;
-  }
-  return now - new Date(heartbeat.ts).getTime() < 20_000;
+  return parseHeartbeat(raw);
 }

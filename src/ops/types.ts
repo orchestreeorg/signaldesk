@@ -3,7 +3,7 @@ export const OPS_SEQ_KEY = "signal:ops:seq";
 export const OPS_HEARTBEAT_KEY = "signal:ops:heartbeat";
 export const OPS_CONTROL_CHANNEL = "signal:ops:control";
 export const OPS_LOG_LIMIT = 400;
-export const OPS_HEARTBEAT_TTL_SEC = 20;
+export const OPS_HEARTBEAT_TTL_SEC = 60;
 
 export type OpsLevel = "info" | "ok" | "wait" | "skip" | "warn" | "error";
 

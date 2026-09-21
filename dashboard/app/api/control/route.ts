@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRedis, readHeartbeat, workerOnline } from "@/lib/redis";
+import { getRedis } from "@/lib/redis";
 import { startLocalWorker, stopLocalWorker } from "@/lib/spawn";
+import { loadWorkerStatus } from "@/lib/status";
 import { OPS_CONTROL_CHANNEL, type OpsControlAction } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -26,8 +27,8 @@ export async function POST(request: NextRequest) {
 
   try {
     if (action === "start") {
-      const online = workerOnline(await readHeartbeat());
-      if (online) {
+      const status = await loadWorkerStatus();
+      if (status.online) {
         await publish("resume");
         return NextResponse.json({ ok: true, message: "Worker already running; resumed." });
       }

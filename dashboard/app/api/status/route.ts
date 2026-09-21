@@ -1,22 +1,17 @@
 import { NextResponse } from "next/server";
-import { isVercel } from "@/lib/env";
-import { readHeartbeat, workerOnline } from "@/lib/redis";
-import { canSpawnWorker } from "@/lib/spawn";
+import { loadWorkerStatus } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const heartbeat = await readHeartbeat();
-    const online = workerOnline(heartbeat);
-    return NextResponse.json({
-      online,
-      heartbeat,
-      spawnable: canSpawnWorker(),
-      vercel: isVercel(),
-    });
+    const status = await loadWorkerStatus();
+    return NextResponse.json(status);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ online: false, error: message, spawnable: canSpawnWorker(), vercel: isVercel() }, { status: 500 });
+    return NextResponse.json(
+      { online: false, error: message, spawnable: false, vercel: Boolean(process.env.VERCEL) },
+      { status: 500 },
+    );
   }
 }
