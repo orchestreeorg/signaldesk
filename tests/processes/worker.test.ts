@@ -20,7 +20,7 @@ describe.skipIf(!canBoot)("worker process", () => {
       "outcomes",
       "digest",
     ]);
-    expect(runtime.schedulers).toEqual(["digest-utc", "macro-hourly", "news-poll", "tape-oi"]);
+    expect(runtime.schedulers).toEqual(["digest-utc", "macro-hourly", "near-hourly", "news-poll", "tape-oi"]);
     await runtime.stop();
   });
 });

@@ -56,6 +56,10 @@ describe("digest job wiring", () => {
     expect(worker).toMatch(/NEAR note attached/);
     expect(worker).toMatch(/command\.action === "run-near"/);
     expect(worker).toMatch(/queues\.digest\.add\("near-now"/);
+    expect(worker).toMatch(/nearTelegramChatId/);
+    expect(worker).toMatch(/partitionNearStories/);
+    expect(worker).toMatch(/sendHeadlines\(nearTransport/);
+    expect(worker).toMatch(/runNewsDesk\(deskItems/);
   });
 
   it("accepts run-near from the ops control API", () => {

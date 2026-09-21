@@ -14,7 +14,7 @@ import { noopCollector } from "../collectors/noop.js";
 import { listCollectors, registerCollector, runCollectors } from "../collectors/registry.js";
 import { createTapeCollector, startLiveTape } from "../collectors/tape/index.js";
 import { ensureMarksTable, saveMark } from "../collectors/tape/marks.js";
-import { loadConfig } from "../config.js";
+import { loadConfig, nearTelegramChatId } from "../config.js";
 import { insertAlert } from "../db/alerts.js";
 import { createDb, createPool } from "../db/client.js";
 import { upsertEvent } from "../db/events.js";
@@ -22,6 +22,14 @@ import { buildDigest } from "../jobs/digest.js";
 import { quietSnapshot, runNewsDesk } from "../jobs/newsDesk.js";
 import { emitMacroIndex } from "../jobs/macroHourly.js";
 import { emitNearPosition } from "../jobs/nearHourly.js";
+import {
+  loadNearNews,
+  NEAR_NEWS_SOURCES,
+  partitionNearStories,
+  takeUnseenNearHeadlines,
+  uniqueNearPingItems,
+  type NearHeadline,
+} from "../jobs/nearNews.js";
 import { fillOutcomes } from "../jobs/outcomes.js";
 import { isMacroJob, isNearJob, registerSchedules } from "../jobs/schedule.js";
 import { formatWait, nextDigestAt, nextMacroAt, nextNearAt, nextNewsAt, nextTapeAt, ops, startOpsBus } from "../ops/index.js";
@@ -48,6 +56,7 @@ export async function startWorker(): Promise<{
   stop: () => Promise<void>;
 }> {
   const config = loadConfig();
+  const nearChatId = nearTelegramChatId(config);
   const tapeEnabled = config.TAPE_LIVE && !process.env.VITEST;
   let paused = false;
   const tapePool = tapeEnabled ? createPool(config.DATABASE_URL) : undefined;
@@ -163,6 +172,7 @@ export async function startWorker(): Promise<{
           mempoolApiBase: config.MEMPOOL_API_BASE,
         });
         const items = await persistRawItems(pool, fetched, { limit: settings.newsBatchLimit });
+        const { near: nearFromDesk, rest: deskItems } = partitionNearStories(items);
         ops("news", "persist", `Persisting ${items.length} new item(s) (cap ${settings.newsBatchLimit}; ${fetched.length} fetched)`, {
           data: { persisted: items.length, fetched: fetched.length, cap: settings.newsBatchLimit },
         });
@@ -172,11 +182,11 @@ export async function startWorker(): Promise<{
             data: { leftover: fetched.length - items.length },
           });
         }
-        if (items.length > 0 && config.TELEGRAM_CHAT_ID && settings.headlineEnabled) {
+        if (deskItems.length > 0 && config.TELEGRAM_CHAT_ID && settings.headlineEnabled) {
           const byId = new Map(catalog.map((source) => [source.id, source]));
           const headlines = await sendHeadlines(transport, {
             chatId: config.TELEGRAM_CHAT_ID,
-            items,
+            items: deskItems,
             dryRun: config.TELEGRAM_DRY_RUN,
             settings,
             sourceNameOf: (id) => byId.get(id)?.name ?? sourceById(id)?.name ?? id,
@@ -189,11 +199,43 @@ export async function startWorker(): Promise<{
               dryRun: config.TELEGRAM_DRY_RUN,
               toneMode: settings.toneMode,
               headlineSend: settings.headlineSend,
-              titles: items.map((item) => item.title),
+              titles: deskItems.map((item) => item.title),
             },
           });
         }
-        await runNewsDesk(items, {
+        if (nearChatId && config.NEAR_TELEGRAM_BOT_TOKEN && settings.headlineEnabled) {
+          const now = new Date();
+          const feed = await loadNearNews({ now, settings }).catch((): NearHeadline[] => []);
+          const dedicated = takeUnseenNearHeadlines(feed, now);
+          const pingItems = uniqueNearPingItems([
+            ...nearFromDesk.map((item) => ({ sourceId: item.sourceId, title: item.title, url: item.url })),
+            ...dedicated.map((item) => ({ sourceId: item.sourceId, title: item.title, url: item.url })),
+          ]);
+          if (pingItems.length > 0) {
+            const byId = new Map(catalog.map((source) => [source.id, source]));
+            const headlines = await sendHeadlines(nearTransport, {
+              chatId: nearChatId,
+              items: pingItems,
+              dryRun: config.TELEGRAM_DRY_RUN,
+              settings,
+              sourceNameOf: (id) =>
+                byId.get(id)?.name ??
+                NEAR_NEWS_SOURCES.find((source) => source.id === id)?.name ??
+                sourceById(id)?.name ??
+                id,
+            });
+            const sent = headlines.filter((row) => row.sent || row.reason === "dry-run");
+            ops("near", "headline", `NEAR headline ping ${sent.length} title(s)`, {
+              data: {
+                count: sent.length,
+                filtered: headlines.length - sent.length,
+                dryRun: config.TELEGRAM_DRY_RUN,
+                titles: pingItems.map((item) => item.title),
+              },
+            });
+          }
+        }
+        await runNewsDesk(deskItems, {
           llm,
           policy,
           novelty,
@@ -224,16 +266,19 @@ export async function startWorker(): Promise<{
           ops("near", "paused", "NEAR position skipped: worker is paused", { level: "wait" });
           return;
         }
-        const chatId = config.NEAR_TELEGRAM_CHAT_ID;
-        if (!chatId) {
-          ops("near", "skip", "No NEAR_TELEGRAM_CHAT_ID; NEAR position not sent", { level: "skip" });
+        if (!config.NEAR_TELEGRAM_BOT_TOKEN) {
+          ops("near", "skip", "No NEAR_TELEGRAM_BOT_TOKEN; NEAR position not sent", { level: "skip" });
+          return;
+        }
+        if (!nearChatId) {
+          ops("near", "skip", "No NEAR_TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID; NEAR position not sent", { level: "skip" });
           return;
         }
         const pool = createPool(config.DATABASE_URL);
         try {
           const now = new Date();
           const send = await emitNearPosition(pool, nearTransport, {
-            chatId,
+            chatId: nearChatId,
             dryRun: config.TELEGRAM_DRY_RUN,
             now,
             llm: {
@@ -388,7 +433,7 @@ export async function startWorker(): Promise<{
   ops("worker", "boot", `collectors=${collectors.join(",")}`, { data: { collectors } });
   ops("worker", "boot", `queues=${QUEUE_NAMES.join(",")}`);
   ops("worker", "boot", `schedulers=${schedulers.join(",")} (DIGEST 00:00/08:00/16:00 ART; INDEX hourly; NEAR hourly)`);
-  ops("worker", "boot", `news_live=${config.NEWS_LIVE ? "1" : "0"} tape_live=${tapeEnabled ? "1" : "0"} telegram_dry_run=${config.TELEGRAM_DRY_RUN ? "1" : "0"}`);
+  ops("worker", "boot", `news_live=${config.NEWS_LIVE ? "1" : "0"} tape_live=${tapeEnabled ? "1" : "0"} telegram_dry_run=${config.TELEGRAM_DRY_RUN ? "1" : "0"} near_bot=${config.NEAR_TELEGRAM_BOT_TOKEN ? "on" : "off"} near_chat=${nearChatId ? "on" : "off"} llm=${config.LLM_API_KEY ? "on" : "off"}`);
   ops("news", "wait", `Waiting for first news cron. ${formatWait(nextNewsAt())}`, { level: "wait" });
   ops("tape", "wait", `Waiting for first tape cron. ${formatWait(nextTapeAt())}`, { level: "wait" });
   ops("digest", "wait", `Waiting for DIGEST. ${formatWait(nextDigestAt())}`, { level: "wait" });
