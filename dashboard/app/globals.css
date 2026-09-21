@@ -206,6 +206,28 @@ h1 {
   margin-bottom: 12px;
   align-items: stretch;
 }
+.near-chart-span { grid-column: 1 / -1; min-width: 0; }
+.near-candles {
+  width: 100%;
+  height: 220px;
+  display: block;
+  margin-top: 8px;
+}
+.near-candle-grid { stroke: var(--line); stroke-width: 1; }
+.near-candle-axis {
+  fill: var(--muted);
+  font-size: 10px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+.near-candle-up { fill: var(--ok); stroke: var(--ok); stroke-width: 1.6; }
+.near-candle-down { fill: var(--error); stroke: var(--error); stroke-width: 1.6; }
+.near-candle-goal { stroke: var(--ok); stroke-width: 1.8; }
+.near-candle-goal-label {
+  fill: var(--ok);
+  font-size: 10px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 600;
+}
 .overview-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

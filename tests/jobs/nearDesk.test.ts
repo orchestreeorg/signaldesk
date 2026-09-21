@@ -15,6 +15,8 @@ describe("NEAR desk isolation", () => {
     const lotsRoute = readFileSync(join(here, "../../dashboard/app/api/near/lots/route.ts"), "utf8");
     const page = readFileSync(join(here, "../../dashboard/app/near/page.tsx"), "utf8");
     const sim = readFileSync(join(here, "../../src/jobs/nearSimulate.ts"), "utf8");
+    const chart = readFileSync(join(here, "../../src/jobs/nearChart.ts"), "utf8");
+    const chartUi = readFileSync(join(here, "../../dashboard/app/near/NearHoldingsChart.tsx"), "utf8");
     const fuse = readFileSync(join(here, "../../src/fusion/fuse.ts"), "utf8");
     expect(lots).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity/i);
     expect(news).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity|persistRawItems/i);
@@ -29,9 +31,13 @@ describe("NEAR desk isolation", () => {
     expect(page).toMatch(/NEAR news/);
     expect(page).not.toMatch(/DASH_SECRET|dashHeaders|x-dash-secret/);
     expect(page).toMatch(/NearPriceSimulator|Simulate/);
+    expect(page).toMatch(/NearHoldingsChart|Holdings/);
+    expect(chart).toMatch(/NEAR_HOLDINGS_GOAL_USD/);
     expect(sim).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity/i);
+    expect(chart).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity/i);
+    expect(chartUi).not.toMatch(/sendAlert|sendDigest|sendHeadline|grammy|tapePolarity|dangerouslySetInnerHTML/i);
     expect(fuse).not.toMatch(
-      /nearLots|loadNearNews|nearDesk|loadNearPrice|nearSimulate|nearHourly|emitNearPosition|nearNote|NEAR Protocol/i,
+      /nearLots|loadNearNews|nearDesk|loadNearPrice|nearSimulate|nearHourly|emitNearPosition|nearNote|nearChart|NEAR Protocol/i,
     );
   });
 });
