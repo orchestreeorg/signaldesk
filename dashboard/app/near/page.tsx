@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell, StatusChip } from "@/lib/nav";
 import type { OpsHeartbeat } from "@/lib/types";
 import { formatDeskClock, formatDeskStamp } from "@/lib/tz";
+import { simulateNearHoldingsUsd } from "../../../src/jobs/nearSimulate.js";
 import { NearPriceSimulator } from "./NearPriceSimulator";
 import { NearHoldingsChart } from "./NearHoldingsChart";
 
@@ -144,6 +145,8 @@ export default function NearPage() {
   const online = Boolean(status?.online);
   const paused = Boolean(status?.heartbeat?.paused);
   const position = data?.position;
+  const mark = data?.quote ? simulateNearHoldingsUsd(position?.tokens ?? 0, data.quote.value) : null;
+  const netUsd = mark ?? position?.value ?? 0;
 
   const saveLot = async () => {
     setBusy(true);
@@ -247,7 +250,7 @@ export default function NearPage() {
                     </div>
                   )}
                   <div className="macro-index-head">
-                    <strong>{formatUsd(position?.value ?? 0)}</strong>
+                    <strong>{formatUsd(netUsd)}</strong>
                     <span className="meta">net value</span>
                   </div>
                   <div className="meta">
@@ -339,8 +342,8 @@ export default function NearPage() {
             </article>
             <article className="card">
               <h2>Value</h2>
-              <div className="metric">{data ? formatUsd(data.position.value) : "—"}</div>
-              <div className="meta">Net USD in / out</div>
+              <div className="metric">{data ? formatUsd(mark ?? data.position.value) : "—"}</div>
+              <div className="meta">Net USD held</div>
             </article>
             <article className="card">
               <h2>Entries</h2>

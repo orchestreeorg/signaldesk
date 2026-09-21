@@ -1,4 +1,4 @@
-import type { NearLot, NearLotSide } from "./nearLots.js";
+import { applyLotToBook, type NearLot, type NearLotSide } from "./nearLots.js";
 
 export const NEAR_CHART_LIMIT = 40;
 export const NEAR_HOLDINGS_GOAL_USD = 300_000;
@@ -39,12 +39,12 @@ export function holdingsCandles(lots: ChartLot[], limit = NEAR_CHART_LIMIT): Hol
     }
     return a.id.localeCompare(b.id);
   });
-  let held = 0;
+  let book = { tokens: 0, value: 0 };
   const candles: HoldingsCandle[] = [];
   for (const lot of chronological) {
-    const open = held;
-    held = lot.side === "entry" ? held + lot.value : held - lot.value;
-    const close = held;
+    const open = book.value;
+    book = applyLotToBook(book, lot);
+    const close = book.value;
     candles.push({
       id: lot.id,
       side: lot.side,

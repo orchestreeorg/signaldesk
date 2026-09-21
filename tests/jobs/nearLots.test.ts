@@ -32,13 +32,26 @@ describe("near lots", () => {
     });
   });
 
-  it("nets tokens and value across entries and exits", () => {
+  it("nets tokens and remaining book across entries and exits", () => {
     const lots: NearLot[] = [
-      { id: "1", side: "entry", at: new Date(), tokens: 100, value: 200 },
-      { id: "2", side: "entry", at: new Date(), tokens: 50, value: 80 },
-      { id: "3", side: "exit", at: new Date(), tokens: 40, value: 90 },
+      { id: "1", side: "entry", at: new Date("2026-09-21T12:00:00.000Z"), tokens: 100, value: 200 },
+      { id: "2", side: "entry", at: new Date("2026-09-21T13:00:00.000Z"), tokens: 50, value: 80 },
+      { id: "3", side: "exit", at: new Date("2026-09-21T14:00:00.000Z"), tokens: 40, value: 90 },
     ];
-    expect(summarizeNearLots(lots)).toEqual({ tokens: 110, value: 190, entries: 2, exits: 1 });
+    const next = summarizeNearLots(lots);
+    expect(next.tokens).toBe(110);
+    expect(next.entries).toBe(2);
+    expect(next.exits).toBe(1);
+    expect(next.value).toBeCloseTo(280 * (110 / 150), 8);
+  });
+
+  it("reduces book by the sold share even when exit USD is not the proceeds", () => {
+    const lots: NearLot[] = [
+      { id: "1", side: "entry", at: new Date("2026-09-21T12:00:00.000Z"), tokens: 100, value: 1000 },
+      { id: "2", side: "exit", at: new Date("2026-09-21T13:00:00.000Z"), tokens: 40, value: 1 },
+    ];
+    expect(summarizeNearLots(lots)).toMatchObject({ tokens: 60, entries: 1, exits: 1 });
+    expect(summarizeNearLots(lots).value).toBeCloseTo(600, 8);
   });
 
   it("inserts a lot after ensuring the table", async () => {
