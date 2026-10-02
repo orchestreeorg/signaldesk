@@ -10,6 +10,7 @@ export {
   sendHeadlines,
   sendMacroIndex,
   sendNearPosition,
+  sendDeployTest,
   type HeadlineSendResult,
   type MacroIndexSendResult,
   type NearPositionSendResult,
