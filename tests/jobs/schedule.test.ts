@@ -8,8 +8,8 @@ describe("digest schedule", () => {
     expect(DIGEST_CRON).toBe("0 0,8,16 * * *");
     expect(NEWS_CRON).toBe("*/5 * * * *");
     expect(TAPE_CRON).toBe("* * * * *");
-    expect(MACRO_CRON).toBe("0 * * * *");
-    expect(NEAR_CRON).toBe("0 * * * *");
+    expect(MACRO_CRON).toBe("0 8,20 * * *");
+    expect(NEAR_CRON).toBe("0 8,20 * * *");
     expect(DESK_TZ).toBe("America/Argentina/Buenos_Aires");
   });
 

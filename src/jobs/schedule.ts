@@ -9,9 +9,11 @@ export const NEWS_CRON = "*/5 * * * *";
 export const NEWS_SCHEDULER_ID = "news-poll";
 export const TAPE_CRON = "* * * * *";
 export const TAPE_SCHEDULER_ID = "tape-oi";
-export const MACRO_CRON = "0 * * * *";
+export const MACRO_HOURS = [8, 20] as const;
+export const MACRO_CRON = "0 8,20 * * *";
 export const MACRO_SCHEDULER_ID = "macro-hourly";
-export const NEAR_CRON = "0 * * * *";
+export const NEAR_HOURS = MACRO_HOURS;
+export const NEAR_CRON = MACRO_CRON;
 export const NEAR_SCHEDULER_ID = "near-hourly";
 
 export function isMacroJob(job: { name?: string; data?: { kind?: string } }): boolean {
