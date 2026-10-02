@@ -16,6 +16,28 @@ export type TelegramTransport = {
   send(chatId: string, html: string): Promise<void>;
 };
 
+export type DeployTestSendResult =
+  | { sent: true; html: string }
+  | { sent: false; html: string; reason: "dry-run" | "no-chat" };
+
+export const DEPLOY_TEST_HTML = "<b>Actions are working</b>";
+
+/** Hardcoded desk ping after a worker boot. Not FLASH. Mute does not apply. */
+export async function sendDeployTest(
+  transport: TelegramTransport,
+  input: { chatId: string; dryRun: boolean },
+): Promise<DeployTestSendResult> {
+  const html = DEPLOY_TEST_HTML;
+  if (!input.chatId) {
+    return { sent: false, html, reason: "no-chat" };
+  }
+  await transport.send(input.chatId, html);
+  if (input.dryRun) {
+    return { sent: false, html, reason: "dry-run" };
+  }
+  return { sent: true, html };
+}
+
 export type SendResult =
   | { sent: true; html: string }
   | { sent: false; html: string; reason: "muted" | "flash-cap" | "dry-run" };
