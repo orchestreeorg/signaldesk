@@ -1,0 +1,38 @@
+name: Deploy worker
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ping_only:
+        description: Only SSH whoami; do not pull or restart the worker
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: SSH to VPS
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN: ${{ secrets.VPS_KNOWN_HOSTS }}
+          HOST: ${{ secrets.VPS_HOST }}
+          USER: ${{ secrets.VPS_USER }}
+          PING_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.ping_only }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          remote='whoami && hostname'
+          if [ "$PING_ONLY" != "true" ]; then
+            remote='cd /home/signal/signaldesk && git fetch origin && git checkout main && git pull --ff-only origin main && bash scripts/deploy-worker.sh'
+          fi
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "$USER@$HOST" "$remote"
