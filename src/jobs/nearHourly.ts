@@ -19,7 +19,7 @@ export type NearPositionEmitResult = {
 };
 
 /**
- * Hourly NEAR mark on the dedicated bot: live price, holdings USD, ATH vs mark.
+ * Twice-daily NEAR mark on the dedicated bot: live price, holdings USD, ATH vs mark.
  * Optional LLM clerk note. Telegram-only send path. Not FLASH; not fusion.
  */
 export async function emitNearPosition(

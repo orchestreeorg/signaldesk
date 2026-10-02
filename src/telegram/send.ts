@@ -104,7 +104,7 @@ export async function sendDigest(
 }
 
 /**
- * Hourly weekly risk-on index. Not an AlertKind.
+ * Twice-daily weekly risk-on index. Not an AlertKind.
  * Mute does not block it (mute still blocks FLASH via sendAlert).
  * The 4 FLASH/day cap does not apply.
  */
@@ -127,7 +127,7 @@ export async function sendMacroIndex(
 }
 
 /**
- * Hourly NEAR position on the dedicated bot. Not an AlertKind.
+ * Twice-daily NEAR position on the dedicated bot. Not an AlertKind.
  * Mute does not block it. The 4 FLASH/day cap does not apply.
  */
 export async function sendNearPosition(
