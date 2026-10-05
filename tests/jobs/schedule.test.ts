@@ -9,7 +9,7 @@ describe("digest schedule", () => {
     expect(NEWS_CRON).toBe("*/5 * * * *");
     expect(TAPE_CRON).toBe("* * * * *");
     expect(MACRO_CRON).toBe("0 8,20 * * *");
-    expect(NEAR_CRON).toBe("0 8,20 * * *");
+    expect(NEAR_CRON).toBe("0 0,6,12,18 * * *");
     expect(DESK_TZ).toBe("America/Argentina/Buenos_Aires");
   });
 

@@ -170,6 +170,27 @@ describe("NEAR position telegram", () => {
     expect(sent.filter((html) => html.includes("NEAR · position"))).toHaveLength(2);
   });
 
+  it("sends the intel NOTE as a follow-up message", async () => {
+    const { sent, transport } = recordingTransport();
+    const result = await sendNearPosition(transport, {
+      chatId: "1",
+      quote,
+      position,
+      lots,
+      note: "15. ACTIONABLE CONCLUSION\nHOLD / LET WINNERS RUN",
+      dryRun: false,
+      now,
+    });
+    expect(result.sent).toBe(true);
+    expect(sent).toHaveLength(2);
+    expect(sent[0]).toContain("NEAR · position");
+    expect(sent[0]).not.toContain("<b>NOTE</b>");
+    expect(sent[1]).toContain("<b>NOTE</b>");
+    expect(sent[1]).toContain("HOLD / LET WINNERS RUN");
+    expect(result.html).toContain("NEAR · position");
+    expect(result.html).toContain("<b>NOTE</b>");
+  });
+
   it("still sends Position when the note is missing", async () => {
     const { sent, transport } = recordingTransport();
     const result = await sendNearPosition(transport, {

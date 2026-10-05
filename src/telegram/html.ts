@@ -182,6 +182,53 @@ export function renderNearPosition(input: {
   return lines.join("\n");
 }
 
+export const TELEGRAM_HTML_BUDGET = 3900;
+
+/** 6h intel NOTE as its own Telegram message. Escaped. Not fusion. */
+export function renderNearIntelNote(note: string): string {
+  const lines = ["<b>NOTE</b>"];
+  for (const line of note.split("\n")) {
+    const text = line.trim();
+    if (text) {
+      lines.push(escapeHtml(text));
+    }
+  }
+  return lines.join("\n");
+}
+
+export function chunkTelegramHtml(html: string, max = TELEGRAM_HTML_BUDGET): string[] {
+  if (!html) {
+    return [];
+  }
+  if (html.length <= max) {
+    return [html];
+  }
+  const chunks: string[] = [];
+  let current = "";
+  for (const line of html.split("\n")) {
+    const next = current ? `${current}\n${line}` : line;
+    if (next.length <= max) {
+      current = next;
+      continue;
+    }
+    if (current) {
+      chunks.push(current);
+    }
+    if (line.length <= max) {
+      current = line;
+      continue;
+    }
+    for (let i = 0; i < line.length; i += max) {
+      chunks.push(line.slice(i, i + max));
+    }
+    current = "";
+  }
+  if (current) {
+    chunks.push(current);
+  }
+  return chunks;
+}
+
 /** Title + URL ping. Not an AlertKind. Mute and FLASH cap do not apply. */
 export function renderHeadline(input: {
   sourceName: string;

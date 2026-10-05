@@ -2,7 +2,7 @@ import type pg from "pg";
 import { sendNearPosition, type TelegramTransport } from "../telegram/send.js";
 import { recordNearAth, type NearAthView } from "./nearAth.js";
 import { loadNearNews, type NearHeadline } from "./nearNews.js";
-import { loadNearNote, type NearNoteStatus } from "./nearNote.js";
+import { loadNearNote, loadNearRelatives, type NearNoteStatus } from "./nearNote.js";
 import { listNearLots, summarizeNearLots, type NearLot, type NearPosition } from "./nearLots.js";
 import { loadNearPrice, type NearQuote } from "./nearPrice.js";
 import { simulateNearHoldingsUsd } from "./nearSimulate.js";
@@ -19,8 +19,8 @@ export type NearPositionEmitResult = {
 };
 
 /**
- * Twice-daily NEAR mark on the dedicated bot: live price, holdings USD, ATH vs mark.
- * Optional LLM clerk note. Telegram-only send path. Not FLASH; not fusion.
+ * Every-6h NEAR mark on the dedicated bot: live price, holdings USD, ATH vs mark.
+ * Optional LLM market-intel note. Telegram-only send path. Not FLASH; not fusion.
  */
 export async function emitNearPosition(
   pool: pg.Pool,
@@ -40,9 +40,10 @@ export async function emitNearPosition(
 ): Promise<NearPositionEmitResult> {
   const now = input.now ?? new Date();
   const lots = await listNearLots(pool);
-  const [quote, headlines] = await Promise.all([
+  const [quote, headlines, relatives] = await Promise.all([
     loadNearPrice({ now }),
     input.headlines ? Promise.resolve(input.headlines) : loadNearNews({ now }).catch(() => []),
+    loadNearRelatives({ now }).catch(() => null),
   ]);
   const position = summarizeNearLots(lots);
   const mark = quote ? simulateNearHoldingsUsd(position.tokens, quote.value) : null;
@@ -51,8 +52,9 @@ export async function emitNearPosition(
     now,
     quote,
     position,
-    lots,
     headlines,
+    athUsd: ath?.value ?? null,
+    relatives,
     apiKey: input.llm?.apiKey ?? "",
     baseUrl: input.llm?.baseUrl,
     model: input.llm?.model,

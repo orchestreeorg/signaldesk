@@ -104,7 +104,7 @@ export default function ConsolePage() {
         <WaitCard title="Tape OI" wait={heartbeat?.waiting.tape} at={heartbeat?.nextTapeAt} live={heartbeat?.tapeLive} />
         <WaitCard title="DIGEST" wait={heartbeat?.waiting.digest} at={heartbeat?.nextDigestAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="00:00 / 08:00 / 16:00 ART" />
         <WaitCard title="Weekly index" wait={heartbeat?.waiting.macro} at={heartbeat?.nextMacroAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="every hour ART" />
-        <WaitCard title="NEAR position" wait={heartbeat?.waiting.near} at={heartbeat?.nextNearAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="every hour ART · NEAR bot" />
+        <WaitCard title="NEAR position" wait={heartbeat?.waiting.near} at={heartbeat?.nextNearAt} live={heartbeat ? !heartbeat.dryRun : undefined} extra="00:00 / 06:00 / 12:00 / 18:00 ART · NEAR bot" />
       </section>
 
       <div className="controls">
