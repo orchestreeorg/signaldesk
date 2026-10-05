@@ -49,7 +49,6 @@ import {
   createLogTransport,
   sendDigest,
   sendHeadlines,
-  sendDeployTest,
 } from "../telegram/index.js";
 
 export async function startWorker(): Promise<{
@@ -479,20 +478,6 @@ export async function startWorker(): Promise<{
   ops("digest", "wait", `Waiting for DIGEST. ${formatWait(nextDigestAt())}`, { level: "wait" });
   ops("macro", "wait", `Waiting for weekly index. ${formatWait(nextMacroAt())}`, { level: "wait" });
   ops("near", "wait", `Waiting for NEAR position. ${formatWait(nextNearAt())}`, { level: "wait" });
-  if (config.TELEGRAM_CHAT_ID) {
-    try {
-      const ping = await sendDeployTest(transport, {
-        chatId: config.TELEGRAM_CHAT_ID,
-        dryRun: config.TELEGRAM_DRY_RUN,
-      });
-      ops("telegram", "deploy-test", ping.sent ? "Actions are working" : `Actions ping ${ping.reason}`, {
-        level: ping.sent || ping.reason === "dry-run" ? "ok" : "skip",
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      ops("telegram", "deploy-test", `Actions ping failed: ${message}`, { level: "warn" });
-    }
-  }
   await beat();
   const heartbeatTimer = setInterval(() => {
     void beat();
