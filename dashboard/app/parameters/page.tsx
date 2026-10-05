@@ -266,8 +266,8 @@ export default function ParametersPage() {
             value={settings.headlineSend}
             onChange={(event) => patch({ headlineSend: event.target.value as HeadlineSend })}
           >
-            <option value="all">all</option>
             <option value="skip_neutral">skip_neutral</option>
+            <option value="all">all</option>
             <option value="directional_only">directional_only</option>
           </select>
         </label>

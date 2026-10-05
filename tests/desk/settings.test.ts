@@ -35,8 +35,9 @@ describe.skipIf(!databaseUrl)("desk settings persistence", { timeout: 20_000 }, 
       url: "https://www.sec.gov/Archives/edgar/desk-test",
     };
 
-    await saveDeskSettings(pool, DEFAULT_DESK_SETTINGS);
+    await saveDeskSettings(pool, { ...DEFAULT_DESK_SETTINGS, headlineSend: "all" });
     const balanced = await loadDeskSettings(pool);
+    expect(balanced.headlineSend).toBe("all");
     await sendHeadlines(transport, { chatId: "1", items: [item], dryRun: false, settings: balanced });
     expect(sent).toHaveLength(1);
 

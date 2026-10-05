@@ -87,10 +87,9 @@ describe("headline tone", () => {
   });
 
   it("skip_neutral drops NEUTRAL and still sends directional titles", () => {
-    const skip = { ...DEFAULT_DESK_SETTINGS, headlineSend: "skip_neutral" as const };
-    expect(shouldSendHeadline("NEUTRAL", skip)).toBe(false);
-    expect(shouldSendHeadline("BULLISH", skip)).toBe(true);
-    expect(shouldSendHeadline("BEARISH", skip)).toBe(true);
+    expect(shouldSendHeadline("NEUTRAL", DEFAULT_DESK_SETTINGS)).toBe(false);
+    expect(shouldSendHeadline("BULLISH", DEFAULT_DESK_SETTINGS)).toBe(true);
+    expect(shouldSendHeadline("BEARISH", DEFAULT_DESK_SETTINGS)).toBe(true);
   });
 });
 
@@ -112,13 +111,34 @@ describe("headline pings", () => {
     expect(html).not.toMatch(/FLASH|FADE|CONFIRM|INVALIDATE|DIGEST|P\(|long-bias|short-bias|ETF_INFLOW|ENFORCEMENT/);
   });
 
+  it("default skip_neutral drops NEUTRAL EDGAR and still sends BEARISH", async () => {
+    const { sent, transport } = recordingTransport();
+    await sendHeadlines(transport, {
+      chatId: "1",
+      dryRun: false,
+      sourceNameOf: (id) => (id === "edgar" ? "SEC EDGAR" : "CoinDesk"),
+      items: [
+        raw({ url: "https://www.coindesk.com/markets/venue-pause", simhash: "aa" }),
+        raw({
+          sourceId: "edgar",
+          title: "SCHEDULE 13D/A - Fund 1 Investments, LLC (Filed by)",
+          url: "https://www.sec.gov/Archives/edgar/13d",
+          simhash: "bb",
+        }),
+      ],
+    });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toContain("<b>BEARISH</b>");
+    expect(sent[0]).not.toContain("<b>NEUTRAL</b>");
+  });
+
   it("balanced + all sends BEARISH venue pause and NEUTRAL EDGAR", async () => {
     const { sent, transport } = recordingTransport();
     await sendHeadlines(transport, {
       chatId: "1",
       dryRun: false,
       sourceNameOf: (id) => (id === "edgar" ? "SEC EDGAR" : "CoinDesk"),
-      settings: DEFAULT_DESK_SETTINGS,
+      settings: { ...DEFAULT_DESK_SETTINGS, headlineSend: "all" },
       items: [
         raw({ url: "https://www.coindesk.com/markets/venue-pause", simhash: "aa" }),
         raw({
@@ -288,12 +308,12 @@ describe.skipIf(!databaseUrl)("headline persist gate", () => {
     const firstItem = raw({
       url: `${prefix}story-a`,
       simhash: "0000000000000000",
-      title: "Venue pause A",
+      title: "Major venue pauses withdrawals A",
     });
     const nearDup = raw({
       url: `${prefix}story-b`,
       simhash: "0000000000000001",
-      title: "Venue pause B",
+      title: "Major venue pauses withdrawals B",
     });
     const first = await persistRawItems(pool, [firstItem]);
     await sendHeadlines(transport, { chatId: "1", items: first, dryRun: false });
