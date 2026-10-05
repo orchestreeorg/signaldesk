@@ -41,6 +41,12 @@ export const NEAR_NEWS_SOURCES: NearNewsSource[] = [
     dedicated: true,
   },
   {
+    id: "rhea-gnews",
+    name: "Google News RHEA",
+    url: "https://news.google.com/rss/search?q=%22RHEA+Finance%22+OR+%24RHEA+OR+%22Rhea+Finance%22&hl=en-US&gl=US&ceid=US:en",
+    dedicated: true,
+  },
+  {
     id: "coindesk",
     name: "CoinDesk",
     url: "https://www.coindesk.com/arc/outboundfeeds/rss/",
@@ -77,9 +83,16 @@ export function resetNearNewsCache(): void {
   resetSeenNearHeadlines();
 }
 
-/** Ticker/name only. Does not match the English word "near". */
+/** Ticker/name only. Does not match the English word "near". Includes RHEA Finance. */
 export function isNearStory(text: string): boolean {
-  return /\bNEAR\b/.test(text) || /Near Protocol/i.test(text) || /\$NEAR\b/.test(text);
+  return (
+    /\bNEAR\b/.test(text) ||
+    /Near Protocol/i.test(text) ||
+    /\$NEAR\b/.test(text) ||
+    /\bRHEA\b/.test(text) ||
+    /\$RHEA\b/.test(text) ||
+    /Rhea Finance/i.test(text)
+  );
 }
 
 export function isNearRawItem(item: { title: string; body?: string }): boolean {

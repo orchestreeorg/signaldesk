@@ -38,6 +38,11 @@ const feed = `<?xml version="1.0"?>
     <pubDate>Sun, 20 Sep 2026 12:00:00 GMT</pubDate>
   </item>
   <item>
+    <title>RHEA Finance ships intents routing</title>
+    <link>https://example.com/rhea-intents</link>
+    <pubDate>Sun, 20 Sep 2026 11:30:00 GMT</pubDate>
+  </item>
+  <item>
     <title>Bitcoin ETF posts record inflow</title>
     <link>https://example.com/btc-etf</link>
     <pubDate>Sun, 20 Sep 2026 11:00:00 GMT</pubDate>
@@ -48,7 +53,10 @@ describe("NEAR news filter", () => {
   it("matches the ticker, not the English word near", () => {
     expect(isNearStory("NEAR Protocol hits TVL high")).toBe(true);
     expect(isNearStory("NEAR adds 32% as tokenization leads")).toBe(true);
+    expect(isNearStory("RHEA Finance lists a new pool")).toBe(true);
+    expect(isNearStory("$RHEA volume jumps")).toBe(true);
     expect(isNearStory("Markets near a turning point")).toBe(false);
+    expect(isNearStory("The rhea is a flightless bird")).toBe(false);
   });
 
   it("keeps every dedicated-feed item and filters general RSS", () => {
@@ -56,9 +64,13 @@ describe("NEAR news filter", () => {
     const desk = headlinesFromFeed(filtered, feed);
     expect(gov.map((row) => row.title)).toEqual([
       "NEAR Protocol hits a TVL high",
+      "RHEA Finance ships intents routing",
       "Bitcoin ETF posts record inflow",
     ]);
-    expect(desk.map((row) => row.title)).toEqual(["NEAR Protocol hits a TVL high"]);
+    expect(desk.map((row) => row.title)).toEqual([
+      "NEAR Protocol hits a TVL high",
+      "RHEA Finance ships intents routing",
+    ]);
     expect(desk[0]?.href).toContain("https://");
   });
 
@@ -98,10 +110,11 @@ describe("NEAR news filter", () => {
   it("splits ticker stories off the desk pile", () => {
     const { near, rest } = partitionNearStories([
       { title: "NEAR Protocol hits a TVL high", body: "", url: "https://example.com/near" },
+      { title: "RHEA Finance ships intents routing", body: "", url: "https://example.com/rhea" },
       { title: "Bitcoin ETF posts record inflow", body: "", url: "https://example.com/btc" },
       { title: "Markets near a turning point", body: "", url: "https://example.com/word" },
     ]);
-    expect(near.map((row) => row.url)).toEqual(["https://example.com/near"]);
+    expect(near.map((row) => row.url)).toEqual(["https://example.com/near", "https://example.com/rhea"]);
     expect(rest.map((row) => row.url)).toEqual(["https://example.com/btc", "https://example.com/word"]);
   });
 
@@ -141,6 +154,6 @@ describe("NEAR news filter", () => {
     };
     await loadNearNews({ now: new Date("2026-09-20T12:00:00.000Z"), fetchXml });
     await loadNearNews({ now: new Date("2026-09-20T12:05:00.000Z"), fetchXml });
-    expect(calls).toBe(4);
+    expect(calls).toBe(5);
   });
 });
