@@ -36,7 +36,7 @@ export const STRICT_STRONG_BEARISH = ["hack", "exploit", "outflow", "lawsuit", "
 export const DEFAULT_DESK_SETTINGS: DeskSettings = {
   headlineEnabled: true,
   toneMode: "balanced",
-  headlineSend: "all",
+  headlineSend: "skip_neutral",
   bullishTerms: [...BALANCED_BULLISH_TERMS],
   bearishTerms: [...BALANCED_BEARISH_TERMS],
   flashEnabled: true,

@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS desk_settings (
   id integer PRIMARY KEY,
   headline_enabled boolean NOT NULL DEFAULT true,
   tone_mode text NOT NULL DEFAULT 'balanced' CHECK (tone_mode IN ('loose', 'balanced', 'strict')),
-  headline_send text NOT NULL DEFAULT 'all' CHECK (headline_send IN ('all', 'skip_neutral', 'directional_only')),
+  headline_send text NOT NULL DEFAULT 'skip_neutral' CHECK (headline_send IN ('all', 'skip_neutral', 'directional_only')),
   bullish_terms text[] NOT NULL DEFAULT '{}',
   bearish_terms text[] NOT NULL DEFAULT '{}',
   flash_enabled boolean NOT NULL DEFAULT true,
@@ -68,6 +68,20 @@ export async function ensureDeskTables(pool: pg.Pool): Promise<void> {
       DEFAULT_DESK_SETTINGS.newsBatchLimit,
     ],
   );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS desk_patches (
+      id text PRIMARY KEY,
+      at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  const patch = await pool.query(
+    `INSERT INTO desk_patches (id) VALUES ('2026-10-skip-neutral-headlines') ON CONFLICT DO NOTHING RETURNING id`,
+  );
+  if ((patch.rowCount ?? 0) > 0) {
+    await pool.query(
+      `UPDATE desk_settings SET headline_send = 'skip_neutral', updated_at = now() WHERE id = 1 AND headline_send = 'all'`,
+    );
+  }
 }
 
 function mapSettings(row: {
