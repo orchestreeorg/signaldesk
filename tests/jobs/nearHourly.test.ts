@@ -23,6 +23,7 @@ describe("hourly NEAR position job", () => {
     expect(src).toMatch(/loadNearPrice/);
     expect(src).toMatch(/loadNearNews/);
     expect(src).toMatch(/loadNearNote/);
+    expect(src).toMatch(/loadNearRelatives/);
     expect(src).toMatch(/sendNearPosition/);
     expect(src).toMatch(/recordNearAth/);
     expect(src).not.toMatch(/persistRawItems|tapePolarity|fuse\(|sendAlert|sendDigest|sendHeadline|sendMacroIndex/);

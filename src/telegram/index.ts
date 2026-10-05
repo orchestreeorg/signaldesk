@@ -1,6 +1,14 @@
 export { createTelegramBot, startTelegram } from "./bot.js";
 export { handleCommand } from "./commands.js";
-export { renderAlert, renderDigest, renderHeadline, renderMacroIndex, renderNearPosition } from "./html.js";
+export {
+  chunkTelegramHtml,
+  renderAlert,
+  renderDigest,
+  renderHeadline,
+  renderMacroIndex,
+  renderNearIntelNote,
+  renderNearPosition,
+} from "./html.js";
 export {
   createApiTransport,
   createLogTransport,

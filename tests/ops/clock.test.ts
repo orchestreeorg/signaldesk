@@ -19,11 +19,16 @@ describe("ops clock", () => {
     expect(nextDigestAt(new Date("2026-09-08T19:00:01.000Z")).toISOString()).toBe("2026-09-09T03:00:00.000Z");
   });
 
-  it("picks the next INDEX/NEAR slot at 08:00 or 20:00 ART", () => {
+  it("picks the next INDEX slot at 08:00 or 20:00 ART", () => {
     expect(nextMacroAt(new Date("2026-09-08T07:00:00.000Z")).toISOString()).toBe("2026-09-08T11:00:00.000Z");
     expect(nextMacroAt(new Date("2026-09-08T11:00:01.000Z")).toISOString()).toBe("2026-09-08T23:00:00.000Z");
     expect(nextMacroAt(new Date("2026-09-08T23:00:01.000Z")).toISOString()).toBe("2026-09-09T11:00:00.000Z");
-    expect(nextNearAt(new Date("2026-09-08T11:00:01.000Z")).toISOString()).toBe("2026-09-08T23:00:00.000Z");
+  });
+
+  it("picks the next NEAR intel slot every 6 hours ART", () => {
+    expect(nextNearAt(new Date("2026-09-08T07:00:00.000Z")).toISOString()).toBe("2026-09-08T09:00:00.000Z");
+    expect(nextNearAt(new Date("2026-09-08T11:00:01.000Z")).toISOString()).toBe("2026-09-08T15:00:00.000Z");
+    expect(nextNearAt(new Date("2026-09-08T23:00:01.000Z")).toISOString()).toBe("2026-09-09T03:00:00.000Z");
   });
 
   it("formats a wait line in ART", () => {

@@ -12,8 +12,8 @@ export const TAPE_SCHEDULER_ID = "tape-oi";
 export const MACRO_HOURS = [8, 20] as const;
 export const MACRO_CRON = "0 8,20 * * *";
 export const MACRO_SCHEDULER_ID = "macro-hourly";
-export const NEAR_HOURS = MACRO_HOURS;
-export const NEAR_CRON = MACRO_CRON;
+export const NEAR_HOURS = [0, 6, 12, 18] as const;
+export const NEAR_CRON = "0 0,6,12,18 * * *";
 export const NEAR_SCHEDULER_ID = "near-hourly";
 
 export function isMacroJob(job: { name?: string; data?: { kind?: string } }): boolean {

@@ -1,6 +1,14 @@
 import { Bot } from "grammy";
 import type { AlertKind } from "../domain/index.js";
-import { renderAlert, renderDigest, renderHeadline, renderMacroIndex, renderNearPosition } from "./html.js";
+import {
+  chunkTelegramHtml,
+  renderAlert,
+  renderDigest,
+  renderHeadline,
+  renderMacroIndex,
+  renderNearIntelNote,
+  renderNearPosition,
+} from "./html.js";
 import type { DigestReport } from "../jobs/digest.js";
 import type { OverviewMacroIndex } from "../jobs/macroScale.js";
 import type { NearAthView } from "../jobs/nearAth.js";
@@ -149,7 +157,7 @@ export async function sendMacroIndex(
 }
 
 /**
- * Twice-daily NEAR position on the dedicated bot. Not an AlertKind.
+ * Every-6h NEAR position on the dedicated bot, then the intel NOTE if present.
  * Mute does not block it. The 4 FLASH/day cap does not apply.
  */
 export async function sendNearPosition(
@@ -167,16 +175,20 @@ export async function sendNearPosition(
   },
 ): Promise<NearPositionSendResult> {
   const now = input.now ?? new Date();
-  const html =
+  const card =
     input.html ??
     renderNearPosition({
       now,
       quote: input.quote ?? null,
       position: input.position,
       ath: input.ath,
-      note: input.note,
     });
-  await transport.send(input.chatId, html);
+  const note = input.note?.trim();
+  const parts = note ? [card, ...chunkTelegramHtml(renderNearIntelNote(note))] : [card];
+  for (const part of parts) {
+    await transport.send(input.chatId, part);
+  }
+  const html = parts.join("\n\n");
   if (input.dryRun) {
     return { sent: false, html, reason: "dry-run" };
   }
