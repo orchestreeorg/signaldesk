@@ -66,8 +66,8 @@ describe("digest job wiring", () => {
     expect(worker).toMatch(/ensureOpsHeartbeatTable/);
     expect(worker).toMatch(/claimOpsCommands/);
     expect(worker).toMatch(/drainCommands/);
-    expect(worker).toMatch(/sendDeployTest/);
-    expect(worker).toMatch(/Actions are working/);
+    expect(worker).not.toMatch(/sendDeployTest/);
+    expect(worker).not.toMatch(/Actions are working/);
   });
 
   it("accepts run-near from the ops control API", () => {
