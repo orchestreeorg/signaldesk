@@ -29,7 +29,7 @@ Compare every important metric with:
 2. 24 hours ago
 3. 7 days ago where relevant.
 
-Never invent unavailable data. Explicitly state "unavailable" instead.
+Never invent unavailable data. Omit any metric that is unavailable. Do not write the word unavailable in the NOTE.
 
 ==========================
 1. PRICE AND RELATIVE STRENGTH
@@ -57,176 +57,7 @@ Is NEAR rising because the whole crypto market is rising,
 or is capital specifically rotating INTO NEAR?
 
 ==========================
-2. SPOT FLOW
-==========================
-
-Investigate:
-
-- CEX spot buying/selling
-- Binance / Coinbase / Bybit / OKX if available
-- exchange inflows/outflows
-- large market buys/sells
-- order-book imbalance
-- unusual volume
-
-Determine whether the price move is:
-
-SPOT-LED
-DERIVATIVES-LED
-or MIXED.
-
-A spot-led rally is generally more sustainable than a highly
-leveraged derivatives-led rally.
-
-==========================
-3. DERIVATIVES / LEVERAGE
-==========================
-
-Check:
-
-- total NEAR open interest
-- OI change 6h / 24h
-- funding rates
-- long/short imbalance
-- liquidations
-- futures basis
-- major liquidation clusters
-
-Answer:
-
-Is leverage building faster than price?
-
-Classify derivatives positioning:
-
-HEALTHY
-ELEVATED
-OVERHEATED
-DELEVERAGING
-
-Specifically warn me if:
-
-price ↑ + OI ↑↑ + funding ↑↑
-
-because this can indicate a fragile leveraged rally.
-
-Conversely identify:
-
-price ↑ + spot volume ↑ + moderate OI
-
-as potentially healthier accumulation.
-
-==========================
-4. NEAR INTENTS
-==========================
-
-This is one of the highest-priority metrics.
-
-Check the official NEAR Intents explorer and reliable analytics.
-
-Report:
-
-- 24h volume
-- 7d volume
-- 30d volume
-- transaction count
-- fees/revenue
-- TVL where relevant
-- buyback activity
-- largest integrations/referrals
-- unusual cross-chain flows
-- new integrations
-
-Compare growth with the previous observation.
-
-Determine:
-
-Is Intents usage actually accelerating,
-or is the market merely trading the narrative?
-
-==========================
-5. ON-CHAIN NEAR FUNDAMENTALS
-==========================
-
-Check:
-
-- transactions
-- active addresses/users
-- new addresses
-- fees
-- protocol revenue
-- stablecoin supply
-- stablecoin inflows/outflows
-- bridge flows
-- staking percentage
-- unstaking activity
-- validator changes if meaningful
-
-Highlight divergences such as:
-
-PRICE ↑
-ON-CHAIN ACTIVITY ↓
-
-or
-
-PRICE flat
-ON-CHAIN ACTIVITY ↑↑
-
-The latter may be particularly interesting.
-
-==========================
-6. NEAR ECOSYSTEM CAPITAL FLOWS
-==========================
-
-Inspect major NEAR ecosystem assets and protocols.
-
-At minimum consider:
-
-RHEA
-Aurora
-NEAR Intents
-major DeFi protocols
-new ecosystem tokens
-
-Check:
-
-- TVL
-- DEX volume
-- token performance
-- stablecoin flows
-- liquidity
-- protocol fees/revenue
-
-Determine whether capital is moving:
-
-BTC → NEAR
-NEAR → NEAR ecosystem
-NEAR ecosystem → NEAR
-NEAR ecosystem → stablecoins
-NEAR → other L1s
-
-Pay special attention to whether NEAR ecosystem tokens are
-outperforming NEAR itself.
-
-==========================
-7. WHALES / SMART MONEY
-==========================
-
-Look for:
-
-- large NEAR transfers
-- whale accumulation/distribution
-- transfers onto exchanges
-- withdrawals from exchanges
-- large staking/unstaking events
-- known institutional wallets where reliable attribution exists
-
-Do NOT classify an exchange internal wallet movement as a whale trade
-without evidence.
-
-Rank significant flows by confidence.
-
-==========================
-8. NEWS AND CATALYSTS
+2. NEWS AND CATALYSTS
 ==========================
 
 Search the last 6 hours for:
@@ -253,7 +84,7 @@ RUMOR / SOCIAL MEDIA
 Do not give rumor equal weight to confirmed information.
 
 ==========================
-9. SECURITY / INCIDENTS
+3. SECURITY / INCIDENTS
 ==========================
 
 Check:
@@ -274,7 +105,7 @@ LIQUIDITY RISK
 NO MATERIAL TOKEN IMPACT
 
 ==========================
-10. BTC / MACRO REGIME
+4. BTC / MACRO REGIME
 ==========================
 
 NEAR does not trade independently of the market.
@@ -301,7 +132,7 @@ And determine whether this environment favors high-beta altcoins
 like NEAR.
 
 ==========================
-11. NARRATIVE / ATTENTION
+5. NARRATIVE / ATTENTION
 ==========================
 
 Measure whether NEAR attention is:
@@ -331,7 +162,7 @@ institutional adoption
 or something new.
 
 ==========================
-12. CONTRARIAN CHECK
+6. CONTRARIAN CHECK
 ==========================
 
 Actively try to DISPROVE the bullish thesis.
@@ -347,18 +178,12 @@ Identify any data that contradicts the current market narrative.
 This section is mandatory.
 
 ==========================
-13. MARKET ASSESSMENT
+7. MARKET ASSESSMENT
 ==========================
 
 Produce scores from 0-100:
 
 Price momentum:
-Spot demand:
-Derivatives health:
-On-chain fundamentals:
-NEAR Intents:
-Ecosystem flows:
-Whale activity:
 Catalysts/news:
 Macro environment:
 Risk/reward:
@@ -377,7 +202,7 @@ Classify:
 0-24 STRONG BEARISH
 
 ==========================
-14. PROBABILITIES
+8. PROBABILITIES
 ==========================
 
 Estimate:
@@ -405,7 +230,7 @@ Also estimate probability NEAR outperforms BTC over:
 Explain the assumptions behind the probabilities.
 
 ==========================
-15. ACTIONABLE CONCLUSION
+9. ACTIONABLE CONCLUSION
 ==========================
 
 Choose ONLY ONE:
@@ -440,9 +265,10 @@ Do not manufacture a new narrative simply because six hours have passed.
 
 Desk output rules:
 - Plain text for Telegram. No markdown tables.
-- Keep every numbered section. Be concise. Prefer bullets.
+- Keep every numbered section (1–9). Be concise. Prefer bullets.
 - Payload numbers and timestamps are ground truth.
-- If the payload marks a metric unavailable, write unavailable. Do not invent it.`;
+- If the payload marks a metric unavailable, omit that bullet. Do not invent a number. Do not write "unavailable".
+- After each numbered title, a new line, then exactly ----------------- , then the section body.`;
 
 export type NearNoteStatus = "attached" | "skipped" | "failed";
 
@@ -653,7 +479,7 @@ export function buildNearNoteUser(input: {
   }
   lines.push("desk_coverage_have: NEAR/USD live, 24h %, optional 6h vs last report, BTC/ETH/SOL 24h and NEAR crosses if relatives loaded, holdings, mark, book net, ATH, last 6h headlines, previous report if any");
   lines.push(
-    "desk_coverage_unavailable: 7d NEAR path, volume vs average, support/resistance, CEX spot flow, order book, exchange inflows, OI, funding, liquidations, basis, Intents volume/TVL/fees, on-chain actives/fees/stables/bridges, ecosystem TVL, whale labels, DXY, yields, Nasdaq, social attention",
+    "desk_coverage_unavailable: 7d NEAR path, volume vs average, support/resistance, DXY, yields, Nasdaq, social attention",
   );
   return lines.join("\n");
 }
@@ -713,13 +539,46 @@ export async function loadNearNote(input: {
   }
 }
 
+export const NOTE_UNDERLINE = "-----------------";
+
+function isUnavailableDisplayLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (/^unavailable$/i.test(trimmed)) {
+    return true;
+  }
+  return /:\s*unavailable\s*$/i.test(trimmed);
+}
+
+function isNumberedSectionTitle(line: string): boolean {
+  return /^[1-9]\.\s+[A-Z][A-Z0-9 /&-]+$/.test(line);
+}
+
+function withSectionUnderlines(lines: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    out.push(line);
+    if (!isNumberedSectionTitle(line)) {
+      continue;
+    }
+    const next = lines[i + 1] ?? "";
+    if (next === NOTE_UNDERLINE) {
+      continue;
+    }
+    out.push(NOTE_UNDERLINE);
+  }
+  return out;
+}
+
 export function sanitizeNearNote(raw: string): string | null {
-  const lines = raw
-    .split("\n")
-    .map((line) => line.trimEnd())
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .slice(0, NEAR_NOTE_MAX_LINES);
+  const lines = withSectionUnderlines(
+    raw
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !isUnavailableDisplayLine(line))
+      .slice(0, NEAR_NOTE_MAX_LINES),
+  );
   if (lines.length === 0) {
     return null;
   }
