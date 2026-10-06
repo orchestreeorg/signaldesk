@@ -49,11 +49,16 @@ describe("NEAR 6h intel note", () => {
   it("uses the market-intel prompt and asks for a single action", () => {
     expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("You are the market intelligence analyst responsible for a significant");
     expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("investment in NEAR Protocol ($NEAR).");
-    expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("NEAR INTENTS");
+    expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("NEWS AND CATALYSTS");
+    expect(NEAR_NOTE_SYSTEM_PROMPT).not.toContain("SPOT FLOW");
+    expect(NEAR_NOTE_SYSTEM_PROMPT).not.toContain("DERIVATIVES / LEVERAGE");
+    expect(NEAR_NOTE_SYSTEM_PROMPT).not.toContain("ON-CHAIN NEAR FUNDAMENTALS");
+    expect(NEAR_NOTE_SYSTEM_PROMPT).not.toContain("WHALES / SMART MONEY");
     expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("CONTRARIAN CHECK");
     expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("HOLD / LET WINNERS RUN");
     expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("NO MATERIAL CHANGE IN THESIS.");
-    expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("Never invent unavailable data.");
+    expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("Omit any metric that is unavailable.");
+    expect(NEAR_NOTE_SYSTEM_PROMPT).toContain("-----------------");
     expect(NEAR_INTEL_MAX_TOKENS).toBe(3500);
   });
 
@@ -139,5 +144,30 @@ describe("NEAR 6h intel note", () => {
     const raw = Array.from({ length: 40 }, (_, i) => `${i + 1}. line`).join("\n");
     const note = sanitizeNearNote(raw);
     expect(note?.split("\n")).toHaveLength(40);
+  });
+
+  it("drops unavailable bullets and underlines numbered titles", () => {
+    const note = sanitizeNearNote(
+      [
+        "1. PRICE AND RELATIVE STRENGTH",
+        "- NEAR/USD: $5.20",
+        "- Volume relative to recent average: unavailable",
+        "unavailable",
+        "2. NEWS AND CATALYSTS",
+        "-----------------",
+        "- NEAR Attacker Returns $3.8 Million",
+      ].join("\n"),
+    );
+    expect(note).toBe(
+      [
+        "1. PRICE AND RELATIVE STRENGTH",
+        "-----------------",
+        "- NEAR/USD: $5.20",
+        "2. NEWS AND CATALYSTS",
+        "-----------------",
+        "- NEAR Attacker Returns $3.8 Million",
+      ].join("\n"),
+    );
+    expect(note).not.toMatch(/unavailable/i);
   });
 });
